@@ -1,0 +1,33 @@
+
+ 
+
+
+@token = your_token_here
+
+###get all users
+GET http://localhost:4000/users
+Accept: application/json
+
+###create a new user
+POST http://localhost:4000/users/register
+Content-Type: application/json
+
+{
+    "username": "newuser",
+    "email": "newuser@example.com",
+    "password": "securepassword"
+}
+
+###login user
+POST http://localhost:4000/users/login
+Content-Type: application/json
+
+{
+    "email": "newuser@example.com",
+    "password": "securepassword"
+}
+
+###get me
+GET http://localhost:4000/users/me
+Accept: application/json
+Authorization: Bearer {{token}}
