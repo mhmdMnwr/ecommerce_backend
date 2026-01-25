@@ -99,11 +99,40 @@ const getMe = asyncWrapper(async (req, res) => {
     });
 });
 
+const verifyPermission = asyncWrapper(async (req, res) => {
+    const { page } = req.body;
+    if (!page) {
+        throw AppError.create('Page name is required', 400, httpStatus.FAIL);
+    }
+
+    const user = await User.findById(req.currentUser.id);
+    if (!user) {
+        throw AppError.create('User not found', 404, httpStatus.FAIL);
+    }
+
+    let hasPermission = false;
+    
+    // Super admin has all permissions
+    if (user.role === 'sup_admin') {
+        hasPermission = true;
+    } else {
+        hasPermission = user.permissions.includes(page);
+    }
+
+    res.json({
+        status: 'success',
+        data: {
+            hasPermission
+        }
+    });
+});
+
 module.exports = {
     getAllUsers,
     register,
     login,
     refreshToken,
-    getMe
+    getMe,
+    verifyPermission
 };
 

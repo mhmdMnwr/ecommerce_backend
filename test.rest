@@ -2,7 +2,7 @@
  
 
 
-@token = your_token_here
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Im5ld3VzZXJAZXhhbXBsZS5jb20iLCJpZCI6IjY5NDkzNWRiNTBhMzFiOGI5OGNiM2FjNCIsInJvbGUiOiJjdXN0b21lciIsImlhdCI6MTc2OTI4NTg5MSwiZXhwIjoxNzY5Mjg2NzkxfQ.OrrqmK0aD8B1-FV4bohFAueAp7GZmI6TnldarzXwCW8
 
 ###get all users
 GET http://localhost:4000/users

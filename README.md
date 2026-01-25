@@ -88,11 +88,36 @@ Base URL: `/users`
 | Method | Endpoint         | Description                         | Auth Header |
 | :----- | :--------------- | :---------------------------------- | :--------- |
 | `GET`  | `/`              | Get all users                       | Optional*  |
+| `GET`  | `/me`            | Get current logged-in user          | Yes        |
 | `POST` | `/register`      | Register a new user                 | No         |
 | `POST` | `/login`         | User login                          | No         |
 | `POST` | `/refresh-token` | Refresh access token                | No         |
 
-**Note:** Check specific route implementation for required fields in the request body (e.g., `email`, `password`, `firstName`, `lastName` for registration).
+### Products
+
+Base URL: `/products`
+
+| Method | Endpoint         | Description                                      | Auth Header |
+| :----- | :--------------- | :----------------------------------------------- | :---------- |
+| `GET`  | `/`              | Get all products (supports query: `name`)        | No          |
+| `GET`  | `/:id`           | Get a single product                             | No          |
+| `POST` | `/`              | Create a new product                             | No*         |
+| `PATCH`| `/:id`           | Update a product                                 | No*         |
+| `DELETE`| `/:id`          | Delete a product                                 | No*         |
+
+\* *Note: Auth requirements for products depend on your implementation (currently open based on code).*
+
+**Product Schema:**
+```json
+{
+  "name": "String",
+  "price": "Number",
+  "image": "String (URL)",
+  "state": "String ('available' | 'not available')"
+}
+```
+
+**Note:** Check specific route implementation for required fields in the request body (e.g., `email`, `password`, `updated` fields for registration).
 
 ## Error Handling
 

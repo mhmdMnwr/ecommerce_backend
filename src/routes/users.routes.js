@@ -19,4 +19,7 @@ router.route('/refresh-token')
 router.route('/me')
     .get(verifyToken, userController.getMe);   
 
+router.route('/verify-permission')
+    .post(verifyToken, userController.verifyPermission);
+
 module.exports = router;
