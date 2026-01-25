@@ -9,16 +9,61 @@ const getAllProducts = asyncWrapper(async (req, res) => {
     const page = parseInt(query.page) || 1;
     const skip = (page - 1) * limit;
 
+    // Build filter object for search
     const filter = {};
+    
+    // Search by name (partial, case-insensitive)
     if (query.name) {
-        filter.name = { $regex: query.name, $options: 'i' }; // Case-insensitive partial match
+        filter.name = { $regex: query.name, $options: 'i' };
+    }
+    
+    // Filter by brand (exact match, case-insensitive)
+    if (query.brand) {
+        filter.brand = { $regex: `^${query.brand}$`, $options: 'i' };
+    }
+    
+    // Filter by category (exact match, case-insensitive)
+    if (query.category) {
+        filter.category = { $regex: `^${query.category}$`, $options: 'i' };
+    }
+    
+    // Filter by state (available / not available)
+    if (query.state) {
+        filter.state = query.state;
     }
 
-    const products = await Product.find(filter,{"__v":false}).limit(limit).skip(skip);
+    // Sorting: ?sort=name (asc) or ?sort=-name (desc)
+    let sortOption = {};
+    if (query.sort) {
+        const sortField = query.sort.startsWith('-') ? query.sort.slice(1) : query.sort;
+        const sortOrder = query.sort.startsWith('-') ? -1 : 1;
+        sortOption[sortField] = sortOrder;
+    }
+
+    // Get total count for pagination info
+    const total = await Product.countDocuments(filter);
+
+    let productsQuery = Product.find(filter, { "__v": false })
+        .limit(limit)
+        .skip(skip);
+    
+    // Apply sorting if specified
+    if (Object.keys(sortOption).length > 0) {
+        productsQuery = productsQuery.sort(sortOption).collation({ locale: 'en', strength: 2 });
+    }
+    
+    const products = await productsQuery;
+        
     res.json({
         status: httpStatus.SUCCESS,
         data: {
-            products
+            products,
+            pagination: {
+                total,
+                page,
+                limit,
+                pages: Math.ceil(total / limit)
+            }
         }
     });
 });
@@ -37,9 +82,9 @@ const getProduct = asyncWrapper(async (req, res) => {
 });
 
 const createProduct = asyncWrapper(async (req, res) => {
-    const { name, price, image, state, brand, category } = req.body;
-    if (!name || !price || !image || !brand || !category) {
-        throw AppError.create('Name, price, image, brand and category are required', 400, httpStatus.FAIL);
+    const { name, price, image, state, brand, category, units_num } = req.body;
+    if (!name || !price || !units_num) {
+        throw AppError.create('Name, price and units_num are required', 400, httpStatus.FAIL);
     }
     const newProduct = new Product({
         name,
@@ -47,7 +92,8 @@ const createProduct = asyncWrapper(async (req, res) => {
         image,
         state,
         brand,
-        category
+        category,
+        units_num
     });
     await newProduct.save();
     res.status(201).json({

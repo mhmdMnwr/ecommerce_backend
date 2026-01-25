@@ -11,14 +11,18 @@ const productSchema = new mongoose.Schema({
     },
     image: { 
         type: String, 
-        required: true 
+        default: ''
     },
     brand: {
         type: String,
-        required: true
+        default: ''
     },
     category: {
         type: String,
+        default: ''
+    },
+    units_num: {
+        type: Number,
         required: true
     },
     state: { 
