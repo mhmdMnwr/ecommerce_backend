@@ -11,6 +11,7 @@ const brandRoutes = require('./routes/brands.routes');
 const categoryRoutes = require('./routes/categories.routes');
 const feedbackRoutes = require('./routes/feedback.routes');
 const httpStatusText = require('./utils/httpStatusText');
+const orderRoutes = require('./routes/orders.routes');
 
 app.use(cors());
 app.use(express.json());
@@ -20,9 +21,19 @@ app.use('/products', productRoutes);
 app.use('/brands', brandRoutes);
 app.use('/categories', categoryRoutes);
 app.use('/feedbacks', feedbackRoutes);
+app.use('/orders', orderRoutes);
+
 
 // Global error handler
 app.use((error, req, res, next) => {
+    if (error.code === 11000) {
+        const field = Object.keys(error.keyValue)[0];
+        return res.status(400).json({
+            status: 'fail',
+            message: `That ${field} is already in use. Please try another one.`
+        });
+    }
+    
     res.status(error.statusCode || 500).json({
         status: error.statusText || httpStatusText.ERROR,
         message: error.message,

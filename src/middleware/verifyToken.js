@@ -17,6 +17,7 @@ const verifyToken = (req, res, next) => {
         const error = AppError.create('invalid token', 401, httpStatusText.FAIL);
         return next(error);
     }
-}
+};
 
 module.exports = verifyToken;
+

@@ -9,7 +9,12 @@ const brandSchema = new mongoose.Schema({
     image: { 
         type: String, 
         default: ''
+    },
+    createdAt: { 
+        type: Date, 
+        default: Date.now 
     }
+
 });
 
 module.exports = mongoose.model('Brand', brandSchema);

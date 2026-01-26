@@ -134,3 +134,14 @@ The application uses a global error handler middleware. API responses for errors
 
 - **FAIL**: Operational errors (e.g., validation failed).
 - **ERROR**: Internal server errors.
+
+
+
+
+changes in the front 
+the username password insted of email password 
+
+consider the permissions feature i added 
+
+remember to handle the logic of creation 
+because anyone can create any user role 

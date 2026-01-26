@@ -5,6 +5,8 @@ const bcrypt = require('bcryptjs');
 const asyncWrapper = require('../middleware/asyncWrapper');
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateJWT');
 const jwt = require('jsonwebtoken');
+const { ROLES } = require('../config/permissions');
+
 
 const getAllUsers = asyncWrapper(async (req, res) => {
     const query = req.query || {};
@@ -20,52 +22,51 @@ const getAllUsers = asyncWrapper(async (req, res) => {
     });
 });
 
-const register = asyncWrapper(async (req, res) => {
-    const { username, password, role } = req.body;
 
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-        throw AppError.create('Username already exists', 400, httpStatus.FAIL);
-    }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({
-        username,
-        password: hashedPassword,
-        role
-    });
 
-    const accessToken = generateAccessToken({id: newUser._id, role: newUser.role});
-    const refreshToken = generateRefreshToken({id: newUser._id, role: newUser.role});
-    
-    await newUser.save();
-    res.status(201).json({
-        status: 'success',
-        data: {
-            accessToken,
-            refreshToken
-        }
-    });
-});
-
-const login = asyncWrapper(async (req, res) => {
+const login = asyncWrapper(async (req, res, next) => {
     const { username, password } = req.body;
+
+    // 1. Basic Validation
     if (!username || !password) {
-        throw AppError.create('Username and password are required', 400, httpStatus.FAIL);
+        return next(AppError.create('Username and password are required', 400, httpStatus.FAIL));
     }
+
+    // 2. Find user (Username is unique)
     const user = await User.findOne({ username });
     if (!user) {
-        throw AppError.create('User not found', 404, httpStatus.FAIL);
+        return next(AppError.create('Invalid credentials', 401, httpStatus.FAIL));
     }
+
+    // 3. Password Verification
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-        throw AppError.create('Invalid credentials', 400, httpStatus.FAIL);
+        return next(AppError.create('Invalid credentials', 401, httpStatus.FAIL));
     }
-    const accessToken = generateAccessToken({id: user._id, role: user.role});
-    const refreshToken = generateRefreshToken({id: user._id, role: user.role});
-    
-    res.json({ 
+
+    // 4. Token Generation
+    const accessToken = generateAccessToken({ id: user._id, role: user.role });
+    const refreshToken = generateRefreshToken({ id: user._id, role: user.role });
+
+    // 5. Response Construction
+    const responseData = {
+        accessToken,
+        refreshToken,
+        user: {
+            username: user.username,
+            role: user.role
+        }
+    };
+
+    // If it's NOT a customer (likely a Staff member on the Web Dashboard),
+    // include the allowed pages to help the frontend build the sidebar.
+    if (user.role !== 'customer') {
+        responseData.allowedPages = ROLE_PAGES[user.role];
+    }
+
+    res.status(200).json({ 
         status: 'success', 
-        data: { accessToken, refreshToken } 
+        data: responseData 
     });
 });
 
@@ -98,11 +99,86 @@ const getMe = asyncWrapper(async (req, res) => {
     });
 });
 
+const registerCustomer = asyncWrapper(async (req, res, next) => {
+    const { username, password, address, phone } = req.body;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new User({
+        username,
+        password: hashedPassword,
+        address,
+        phone,
+        role: 'customer' // 🔒 Hardcoded safety
+    });
+
+    await newUser.save();
+    res.status(201).json({ status: httpStatus.SUCCESS, data: { user: newUser } });
+});
+
+// DOOR 2: Create Staff (Strictly Sup_Admin)
+const createAdminBySuper = asyncWrapper(async (req, res, next) => {
+    const { username, password, role } = req.body;
+
+   
+
+    // 2. Prevent creating another sup_admin
+    if (role === 'sup_admin') {
+        return next(AppError.create('Cannot create another Super Admin', 400));
+    }
+
+    // 3. Validate that the role actually exists in your ROLES list
+    if (!ROLES.includes(role)) {
+        return next(AppError.create(`Role '${role}' does not exist in our system`, 400));
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newAdmin = new User({
+        username,
+        password: hashedPassword,
+        role: role || 'low_admin' 
+    });
+
+    await newAdmin.save();
+    res.status(201).json({ status: httpStatus.SUCCESS, data: { user: newAdmin } });
+});
+
+// DOOR 3: Update Role (Strictly Sup_Admin)
+const updateUserRole = asyncWrapper(async (req, res, next) => {
+    const { userId, newRole } = req.body;
+
+    
+
+    // 2. Validate the newRole exists and isn't sup_admin
+    if (!ROLES.includes(newRole) || newRole === 'sup_admin') {
+        return next(AppError.create('Invalid or restricted role target', 400));
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return next(AppError.create('User not found', 404));
+
+    // 3. Protect existing Super Admin
+    if (user.role === 'sup_admin') {
+        return next(AppError.create('The Super Admin account is protected', 403));
+    }
+
+    user.role = newRole;
+    await user.save();
+
+    res.status(200).json({ status: httpStatus.SUCCESS, message: `Role updated to ${newRole}` });
+});
+
+
+
+
 
 
 module.exports = {
     getAllUsers,
-    register,
+    registerCustomer,
+    createAdminBySuper,
+    updateUserRole,
     login,
     refreshToken,
     getMe
