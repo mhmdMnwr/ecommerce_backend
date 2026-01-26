@@ -4,7 +4,7 @@ const PERMISSIONS = {
     PRODUCTS: 'products',
     BRANDS: 'brands',
     ORDERS: 'orders',
-    REDUCTIONS: 'reductions',
+    FEEDBACKS: 'feedbacks',
     CLIENTS: 'clients',
     ADMINS: 'admins'
 };

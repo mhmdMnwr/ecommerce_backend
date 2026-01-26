@@ -9,6 +9,7 @@ const userRoutes = require('./routes/users.routes');
 const productRoutes = require('./routes/products.routes');
 const brandRoutes = require('./routes/brands.routes');
 const categoryRoutes = require('./routes/categories.routes');
+const feedbackRoutes = require('./routes/feedback.routes');
 const httpStatusText = require('./utils/httpStatusText');
 
 app.use(cors());
@@ -18,6 +19,7 @@ app.use('/users', userRoutes);
 app.use('/products', productRoutes);
 app.use('/brands', brandRoutes);
 app.use('/categories', categoryRoutes);
+app.use('/feedbacks', feedbackRoutes);
 
 // Global error handler
 app.use((error, req, res, next) => {
