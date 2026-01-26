@@ -21,22 +21,21 @@ const getAllUsers = asyncWrapper(async (req, res) => {
 });
 
 const register = asyncWrapper(async (req, res) => {
-    const { username, email, password, role } = req.body;
+    const { username, password, role } = req.body;
 
-    const existingUser = await User.findOne({ $or: [ { username }, { email } ] });
+    const existingUser = await User.findOne({ username });
     if (existingUser) {
-        throw AppError.create('Username or email already exists', 400, httpStatus.FAIL);
+        throw AppError.create('Username already exists', 400, httpStatus.FAIL);
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
         username,
-        email,
         password: hashedPassword,
         role
     });
 
-    const accessToken = generateAccessToken({email: newUser.email, id: newUser._id, role: newUser.role});
-    const refreshToken = generateRefreshToken({email: newUser.email, id: newUser._id, role: newUser.role});
+    const accessToken = generateAccessToken({id: newUser._id, role: newUser.role});
+    const refreshToken = generateRefreshToken({id: newUser._id, role: newUser.role});
     
     await newUser.save();
     res.status(201).json({
@@ -49,11 +48,11 @@ const register = asyncWrapper(async (req, res) => {
 });
 
 const login = asyncWrapper(async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) {
-        throw AppError.create('Email and password are required', 400, httpStatus.FAIL);
+    const { username, password } = req.body;
+    if (!username || !password) {
+        throw AppError.create('Username and password are required', 400, httpStatus.FAIL);
     }
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ username });
     if (!user) {
         throw AppError.create('User not found', 404, httpStatus.FAIL);
     }
@@ -61,8 +60,8 @@ const login = asyncWrapper(async (req, res) => {
     if (!isMatch) {
         throw AppError.create('Invalid credentials', 400, httpStatus.FAIL);
     }
-    const accessToken = generateAccessToken({email: user.email, id: user._id, role: user.role});
-    const refreshToken = generateRefreshToken({email: user.email, id: user._id, role: user.role});
+    const accessToken = generateAccessToken({id: user._id, role: user.role});
+    const refreshToken = generateRefreshToken({id: user._id, role: user.role});
     
     res.json({ 
         status: 'success', 
@@ -81,7 +80,7 @@ const refreshToken = asyncWrapper(async (req, res) => {
         if (!user) {
              throw AppError.create('User not found', 404, httpStatus.FAIL);
         }
-        const accessToken = generateAccessToken({email: user.email, id: user._id, role: user.role});
+        const accessToken = generateAccessToken({id: user._id, role: user.role});
         res.json({ status: 'success', data: { accessToken } });
     } catch (err) {
         throw AppError.create('Invalid refresh token', 401, httpStatus.FAIL);
@@ -99,40 +98,13 @@ const getMe = asyncWrapper(async (req, res) => {
     });
 });
 
-const verifyPermission = asyncWrapper(async (req, res) => {
-    const { page } = req.body;
-    if (!page) {
-        throw AppError.create('Page name is required', 400, httpStatus.FAIL);
-    }
 
-    const user = await User.findById(req.currentUser.id);
-    if (!user) {
-        throw AppError.create('User not found', 404, httpStatus.FAIL);
-    }
-
-    let hasPermission = false;
-    
-    // Super admin has all permissions
-    if (user.role === 'sup_admin') {
-        hasPermission = true;
-    } else {
-        hasPermission = user.permissions.includes(page);
-    }
-
-    res.json({
-        status: 'success',
-        data: {
-            hasPermission
-        }
-    });
-});
 
 module.exports = {
     getAllUsers,
     register,
     login,
     refreshToken,
-    getMe,
-    verifyPermission
+    getMe
 };
 

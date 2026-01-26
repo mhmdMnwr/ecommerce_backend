@@ -1,20 +1,32 @@
 const mongoose = require('mongoose');
-const { PERMISSION_LIST } = require('../config/permissions');
+const {ROLES} = require('../config/permissions');
 
 const userSchema = new mongoose.Schema({
-    username: { type: String, required: true, unique: true },
-    role: { type: String, enum: ['admin', 'customer' , 'sup_admin'], default: 'customer' },
-    permissions: { 
-        type: [String], 
-        enum: PERMISSION_LIST,
-        default: [] // Stores specific permissions for 'admin' users
+    username: { 
+        type: String, 
+        required: true, 
+        unique: true,
+        trim: true 
     },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now }
+    password: { 
+        type: String, 
+        required: true 
+    },
+    role: { 
+        type: String, 
+        enum: ROLES, 
+        default: 'customer' 
+    },
+    createdAt: { 
+        type: Date, 
+        default: Date.now 
+    }
 });
 
-// Ensure only one super admin exists
-userSchema.index({ role: 1 }, { unique: true, partialFilterExpression: { role: 'sup_admin' } });
+// Ensures only one 'sup_admin' can exist in the database
+userSchema.index(
+    { role: 1 }, 
+    { unique: true, partialFilterExpression: { role: 'sup_admin' } }
+);
 
 module.exports = mongoose.model('User', userSchema);
