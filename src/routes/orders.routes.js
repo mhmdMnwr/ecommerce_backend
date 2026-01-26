@@ -4,15 +4,25 @@ const router = express.Router();
 const checkPermission = require('../middleware/checkPermission');
 const verifyToken = require('../middleware/verifyToken');
 
+router.use(verifyToken);
 
+// 1. Base routes
+router.route('/')
+    .get(checkPermission('orders'), orderController.getAllOrders)
+    .post(orderController.createOrder);
 
-router.route('/').get(verifyToken, checkPermission('orders'), orderController.getAllOrders)
-    .post(verifyToken, orderController.createOrder);
+// 2. Customer specific list (No orderId needed in URL, uses Token)
+router.route('/my-orders')
+    .get(orderController.getMyOrders);
 
-router.route('/:id/updateStatus')
-    .patch(verifyToken, orderController.updateOrderStatus);
+// 3. Specific Order Actions (Changed :id to :orderId to match your controller)
+router.route('/:orderId/updateStatus')
+    .patch(checkPermission('orders'), orderController.updateOrderStatus);
 
-router.route('/:id/updateContent')
-    .patch(verifyToken, checkPermission('orders'), orderController.updateOrderContent);
+router.route('/:orderId/updateContent')
+    .patch(checkPermission('orders'), orderController.updateOrderContent);
+
+router.route('/:orderId/cancelMyOrder')
+    .patch(orderController.cancelMyOrder);
 
 module.exports = router;
