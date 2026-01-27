@@ -6,15 +6,16 @@ const orderSchema = new mongoose.Schema({
         _id: false,
         productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
         title: { type: String, required: true },
-        quantity: { type: Number, required: true, min: 1 },
+        quantity: { type: Number, required: true, min: 1, max: 200 },
         units: { type: Number, required: true, min: 0 },
-        price:{ type: Number, required: true, min: 0 }
+        price: { type: Number, required: true, min: 0 },
+        totalSold: { type: Number, required: true, min: 0, default: 0 },
+        totalRevenue: { type: Number, required: true, min: 0, default: 0 }
     }],
     totalAmount: { type: Number, required: true, min: 0 },
-    status: { type: String, enum: ['pending', 'processing', 'delivered','shipped' ,  'cancelled'], default: 'pending' },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
-});
+    status: { type: String, enum: ['pending', 'processing', 'delivered', 'shipped', 'cancelled'], default: 'pending' },
+
+}, { timestamps: true });
 
 
 

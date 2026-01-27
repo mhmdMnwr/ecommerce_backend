@@ -143,5 +143,9 @@ the username password insted of email password
 
 consider the permissions feature i added 
 
-remember to handle the logic of creation 
-because anyone can create any user role 
+
+
+I ALSO NEED TO ADD NEW STATE TO USERS WHICH IS BLOCKED ONLY THE SUPADMIN CAN CHANGE A USER TO BLOCKED 
+
+
+i need also to configure a metric (seuil) in order to accept orders 

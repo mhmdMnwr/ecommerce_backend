@@ -1,24 +1,22 @@
 const mongoose = require('mongoose')
 
 const feedbackSchema = new mongoose.Schema({
-    username : {
+    username: {
         type: String,
         required: true
     },
     userId: {
         type: String,
         required: true
-        
+
     },
-    comment : {
+    comment: {
         type: String,
         required: true
     },
-    createdAt: { 
-        
-        type: Date, default: Date.now }
 
 
-})
+
+}, { timestamps: true })
 
 module.exports = mongoose.model('Feedback', feedbackSchema);

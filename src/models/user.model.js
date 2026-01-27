@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { ROLES } = require('../config/permissions');
+const { ROLES } = require('../config/permissions.js');
 
 const userSchema = new mongoose.Schema({
     username: {
@@ -17,17 +17,22 @@ const userSchema = new mongoose.Schema({
         enum: ROLES,
         default: 'customer'
     },
+    totalOrders: {
+        type: Number,
+        default: 0
+    },
+    totalSpent: {
+        type: Number,
+        default: 0
+    },
+
     address: { type: String, default: '' },
     phone: { type: String, default: '' },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    }
 
-});
+}, { timestamps: true });
 
 // Ensures only one 'sup_admin' can exist in the database
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
     if (this.isModified('role') && this.role === 'sup_admin') {
         const User = mongoose.model('User');
         const existingSup = await User.findOne({ role: 'sup_admin' });

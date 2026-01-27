@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const asyncWrapper = require('../middleware/asyncWrapper');
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateJWT');
 const jwt = require('jsonwebtoken');
-const { ROLES } = require('../config/permissions');
+const { ROLES } = require('../config/permissions.js');
 
 
 const getAllUsers = asyncWrapper(async (req, res) => {
@@ -13,9 +13,9 @@ const getAllUsers = asyncWrapper(async (req, res) => {
     const limit = query.limit || 10;
     const page = query.page || 1;
     const skip = (page - 1) * limit;
-    const users = await User.find().limit(limit).skip(skip);    
+    const users = await User.find().limit(limit).skip(skip);
     res.json({
-        status: 'success', 
+        status: 'success',
         data: {
             users
         }
@@ -64,9 +64,9 @@ const login = asyncWrapper(async (req, res, next) => {
         responseData.allowedPages = ROLE_PAGES[user.role];
     }
 
-    res.status(200).json({ 
-        status: 'success', 
-        data: responseData 
+    res.status(200).json({
+        status: 'success',
+        data: responseData
     });
 });
 
@@ -79,9 +79,9 @@ const refreshToken = asyncWrapper(async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
         const user = await User.findById(decoded.id);
         if (!user) {
-             throw AppError.create('User not found', 404, httpStatus.FAIL);
+            throw AppError.create('User not found', 404, httpStatus.FAIL);
         }
-        const accessToken = generateAccessToken({id: user._id, role: user.role});
+        const accessToken = generateAccessToken({ id: user._id, role: user.role });
         res.json({ status: 'success', data: { accessToken } });
     } catch (err) {
         throw AppError.create('Invalid refresh token', 401, httpStatus.FAIL);
@@ -109,7 +109,7 @@ const registerCustomer = asyncWrapper(async (req, res, next) => {
         password: hashedPassword,
         address,
         phone,
-        role: 'customer' // 🔒 Hardcoded safety
+        role: ROLES[0] // Default to 'customer'
     });
 
     await newUser.save();
@@ -120,7 +120,7 @@ const registerCustomer = asyncWrapper(async (req, res, next) => {
 const createAdminBySuper = asyncWrapper(async (req, res, next) => {
     const { username, password, role } = req.body;
 
-   
+
 
     // 2. Prevent creating another sup_admin
     if (role === 'sup_admin') {
@@ -137,7 +137,7 @@ const createAdminBySuper = asyncWrapper(async (req, res, next) => {
     const newAdmin = new User({
         username,
         password: hashedPassword,
-        role: role || 'low_admin' 
+        role: role || 'low_admin'
     });
 
     await newAdmin.save();
@@ -148,7 +148,7 @@ const createAdminBySuper = asyncWrapper(async (req, res, next) => {
 const updateUserRole = asyncWrapper(async (req, res, next) => {
     const { userId, newRole } = req.body;
 
-    
+
 
     // 2. Validate the newRole exists and isn't sup_admin
     if (!ROLES.includes(newRole) || newRole === 'sup_admin') {

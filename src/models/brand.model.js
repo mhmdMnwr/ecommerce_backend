@@ -1,20 +1,17 @@
 const mongoose = require('mongoose');
 
 const brandSchema = new mongoose.Schema({
-    name: { 
-        type: String, 
+    name: {
+        type: String,
         required: true,
         unique: true
     },
-    image: { 
-        type: String, 
+    image: {
+        type: String,
         default: ''
     },
-    createdAt: { 
-        type: Date, 
-        default: Date.now 
-    }
 
-});
+
+}, { timestamps: true });
 
 module.exports = mongoose.model('Brand', brandSchema);

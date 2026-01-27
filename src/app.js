@@ -25,12 +25,13 @@ app.use('/orders', orderRoutes);
 
 
 // Catch-all for undefined routes
-app.all('*', (req, res, next) => {
-    res.status(404).json({
-        status: httpStatusText.FAIL,
-        message: `Can't find ${req.originalUrl} on this server`
-    });
+app.use((req, res) => {
+  res.status(404).json({
+    status: 'fail',
+    message: `Can't find ${req.originalUrl} on this server`
+  });
 });
+
 
 // Global error handler
 app.use((error, req, res, next) => {

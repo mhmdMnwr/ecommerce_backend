@@ -1,4 +1,4 @@
-const {ROLE_PAGES} = require('../config/permissions');
+const {ROLE_PAGES} = require('../config/permissions.js');
 
 const checkPermission = (requiredPage) => {
   return (req, res, next) => {
