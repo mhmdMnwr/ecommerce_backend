@@ -9,9 +9,23 @@ const getAllCategories = asyncWrapper(async (req, res) => {
     const page = parseInt(query.page) || 1;
     const skip = (page - 1) * limit;
 
-    const categories = await Category.find({}, { "__v": false }).limit(limit).skip(skip);
+    const totalCategories = await Category.countDocuments();
+
+    const filter = {};
+    if (query.title) {
+        filter.title = { $regex: query.title, $options: 'i' }; 
+    }
+
+
+    const categories = await Category.find(filter, { "__v": false }).limit(limit).skip(skip);
     res.json({
         status: httpStatus.SUCCESS,
+        pagination: {
+                totalCategories,
+                page,
+                limit,
+                totalPages: Math.ceil(totalCategories / limit)
+            },
         data: {
             categories
         }
@@ -32,12 +46,12 @@ const getCategory = asyncWrapper(async (req, res) => {
 });
 
 const createCategory = asyncWrapper(async (req, res) => {
-    const { name, image } = req.body;
-    if (!name) {
-        throw AppError.create('Name is required', 400, httpStatus.FAIL);
+    const { title, image } = req.body;
+    if (!title) {
+        throw AppError.create('Title is required', 400, httpStatus.FAIL);
     }
     const newCategory = new Category({
-        name,
+        title,
         image
     });
     await newCategory.save();
@@ -63,15 +77,18 @@ const updateCategory = asyncWrapper(async (req, res) => {
         }
     });
 });
-
+const Product = require('../models/product.model');
 const deleteCategory = asyncWrapper(async (req, res) => {
+    const productsWithCategory = await Product.find({ category: req.params.id });
+    if (productsWithCategory.length > 0) {
+        throw AppError.create('Cannot delete category with associated products', 400, httpStatus.FAIL);
+    }
     const result = await Category.deleteOne({ _id: req.params.id });
     if (result.deletedCount === 0) {
         throw AppError.create('Category not found', 404, httpStatus.FAIL);
     }
     res.json({
         status: httpStatus.SUCCESS,
-        data: null
     });
 });
 

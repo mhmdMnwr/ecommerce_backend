@@ -2,48 +2,6 @@
  
 
 
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Im5ld3VzZXJAZXhhbXBsZS5jb20iLCJpZCI6IjY5NDkzNWRiNTBhMzFiOGI5OGNiM2FjNCIsInJvbGUiOiJjdXN0b21lciIsImlhdCI6MTc2OTM4NTkzOSwiZXhwIjoxNzY5Mzg2ODM5fQ.MIkqM78QEyZmsouu-8hqnW7PNZqAmOvvdSvfJfylNmc
-@admin_token =
-
-
 ###get all users
-GET http://localhost:4000/users
-Accept: application/json
+### --- CONFIGURATION ---
 
-###create a new user
-POST http://localhost:4000/users/register
-Content-Type: application/json
-
-{
-    "username": "newuser",
-    "email": "newuser@example.com",
-    "password": "securepassword"
-}
-
-###login user
-POST http://localhost:4000/users/login
-Content-Type: application/json
-
-{
-    "email": "newuser@example.com",
-    "password": "securepassword"
-}
-
-###get me
-GET http://localhost:4000/users/me
-Accept: application/json
-Authorization: Bearer {{token}}
-
-###create feedback
-POST http://localhost:4000/feedbacks
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-    "comment": "Great service!"
-}
-
-###get all feedbacks (admin only)
-GET http://localhost:4000/feedbacks
-Accept: application/json
-Authorization: Bearer {{admin_token}}

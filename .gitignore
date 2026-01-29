@@ -4,3 +4,8 @@ npm-debug.log
 .DS_Store
 coverage/
 .vscode/
+test_auth_paths.rest
+test_brands_categories_^paths.rest
+.idea/
+test_orders_paths.rest
+test_products_paths.rest

@@ -1,26 +1,33 @@
 // src/middleware/allowedTo.js
 const AppError = require('../utils/appErrors');
 const httpStatus = require('../utils/httpStatusText');
+const User = require('../models/user.model');
 
-module.exports = (...roles) => {
-    // roles is an array (e.g., ['sup_admin'])
-    return (req, res, next) => {
-        // 1. Check if verifyToken has already run
-        if (!req.currentUser) {
-            return next(AppError.create('User not authenticated', 401, httpStatus.ERROR));
+const allowedTo = (...roles) => {
+    return async (req, res, next) => {
+        // 1. We already have the ID from verifyToken
+        const userId = req.currentUser.id;
+
+        // 2. LEAN QUERY: Only fetch 'status' and 'role'
+        // .lean() makes it a plain JS object (faster)
+        const user = await User.findById(userId).select('status role').lean();
+
+        if (!user) {
+            return next(AppError.create('User no longer exists', 404));
         }
 
-        // 2. Check if the user's role is allowed for this specific action
-        if (!roles.includes(req.currentUser.role)) {
-            return next(
-                AppError.create(
-                    `Action forbidden for ${req.currentUser.role} role`, 
-                    403, 
-                    httpStatus.FAIL
-                )
-            );
+        // 3. The Real-Time Status Check
+        if (user.status !== 'active') {
+            return next(AppError.create('Account deactivated', 403));
+        }
+
+        // 4. Role Authorization
+        if (!roles.includes(user.role)) {
+            return next(AppError.create('You do not have permission', 403));
         }
 
         next();
     };
 };
+
+module.exports = allowedTo;

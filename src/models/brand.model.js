@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const brandSchema = new mongoose.Schema({
-    name: {
+    title: {
         type: String,
         required: true,
         unique: true
@@ -13,5 +13,7 @@ const brandSchema = new mongoose.Schema({
 
 
 }, { timestamps: true });
+
+
 
 module.exports = mongoose.model('Brand', brandSchema);

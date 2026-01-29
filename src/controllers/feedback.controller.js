@@ -46,7 +46,7 @@ const createFeedback = asyncWrapper(async (req, res) => {
         throw AppError.create('Comment is required', 400, httpStatus.FAIL);
     }
 
-        const username = (await User.findById(req.currentUser.id)).username;
+        const username = req.currentUser.username;
     // DON'T take userId from body. Take it from the authenticated user (token).
     const newFeedback = new Feedback({
         userId: req.currentUser.id, // Securely identified

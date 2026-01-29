@@ -1,36 +1,78 @@
+const { min } = require('lodash');
 const mongoose = require('mongoose');
 
-const productSchema = new mongoose.Schema({
+const productSchema = new mongoose.Schema(
+  {
     title: {
-        type: String,
-        required: true
-    },
-    price: {
-        type: Number,
-        required: true
-    },
-    image: {
-        type: String,
-        default: ''
-    },
-    brand: {
-        type: String,
-        default: ''
-    },
-    category: {
-        type: String,
-        default: ''
-    },
-    units_num: {
-        type: Number,
-        required: true
-    },
-    state: {
-        type: String,
-        enum: ['available', 'not available'],
-        default: 'available'
+      type: String,
+      unique: true,
+      required: true
     },
 
-}, { timestamps: true });
+    price: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+
+    image: {
+      type: String,
+      default: ''
+    },
+
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
+      default: null,
+      validate: {
+        validator: async function (value) {
+          if (!value) return true; // allow empty
+          const category = await mongoose.model('Category').findById(value);
+          return !!category;
+        },
+        message: 'Category does not exist'
+      }
+    },
+
+    brand: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Brand',
+      default: null,
+      validate: {
+        validator: async function (value) {
+          if (!value) return true; // allow empty
+          const brand = await mongoose.model('Brand').findById(value);
+          return !!brand;
+        },
+        message: 'Brand does not exist'
+      }
+    },
+
+    units_num: {
+      type: Number,
+      required: true,
+      min: 1
+    },
+
+    totalSold: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+
+    totalRevenue: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+
+    state: {
+      type: String,
+      enum: ['available', 'unavailable'],
+      default: 'available'
+    }
+  },
+  { timestamps: true }
+);
 
 module.exports = mongoose.model('Product', productSchema);

@@ -2,6 +2,7 @@
 
 const {validateAndCalculateOrder} = require('../utils/orderHelpers');
 const Order = require('../models/order.model');
+const Product = require('../models/product.model');
 const AppError = require('../utils/appErrors');
 const httpStatus = require('../utils/httpStatusText');
 const asyncWrapper = require('../middleware/asyncWrapper');
@@ -108,24 +109,61 @@ const cancelMyOrder = asyncWrapper(async (req, res, next) => {
     });
 });
 
-// 3. UPDATE STATUS (With State Machine Constraints)
+
 const updateOrderStatus = asyncWrapper(async (req, res, next) => {
     const { orderId } = req.params;
     const { status } = req.body;
 
-    if (!status) return next(AppError.create('Status is required', 400, httpStatus.FAIL));
-
     const order = await Order.findById(orderId);
     if (!order) return next(AppError.create('Order not found', 404, httpStatus.FAIL));
 
-    // Apply the status jump
+    const oldStatus = order.status;
+
+    // --- CASE A: DELIVERED (Money IN) ---
+    if (status === 'delivered' && oldStatus !== 'delivered') {
+        
+        await User.findByIdAndUpdate(order.customerId, { 
+            $inc: { totalSpent: order.totalAmount } 
+        });
+
+        const productUpdates = order.items.map(item => {
+            return Product.findByIdAndUpdate(item.productId, {
+                $inc: { 
+                    totalSold: item.quantity, 
+                    totalRevenue: (item.price * item.quantity) 
+                }
+            });
+        });
+        await Promise.all(productUpdates);
+    }
+
+    // --- CASE B: CANCELLED AFTER DELIVERY (Money OUT) ---
+    if (status === 'cancelled' && oldStatus === 'delivered') {
+        // USE customerId HERE
+        await User.findByIdAndUpdate(order.customerId, { 
+            $inc: { totalSpent: -order.totalAmount } 
+        });
+
+        const productReversals = order.items.map(item => {
+            return Product.findByIdAndUpdate(item.productId, {
+                $inc: { 
+                    totalSold: -item.quantity, 
+                    totalRevenue: -(item.price * item.quantity) 
+                }
+            });
+        });
+        await Promise.all(productReversals);
+    }
+
     order.status = status;
     order.updatedAt = Date.now();
     await order.save();
 
-    // Logic for Dashboard Stats update goes here next...
-    
-    res.status(200).json({ status: httpStatus.SUCCESS, data: { order } });
+    res.status(200).json({ 
+        status: httpStatus.SUCCESS, 
+        message: `Order status updated to ${status}`,
+        data: { order } 
+    });
 });
 
 module.exports = { 

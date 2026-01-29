@@ -9,11 +9,28 @@ const getAllBrands = asyncWrapper(async (req, res) => {
     const page = parseInt(query.page) || 1;
     const skip = (page - 1) * limit;
 
-    const brands = await Brand.find({}, { "__v": false }).limit(limit).skip(skip);
+    const filter = {};
+    if (query.title) {
+        filter.title = { $regex: query.title, $options: 'i' }; 
+    }
+
+    const totalBrands = await Brand.countDocuments(filter);
+
+    const brands = await Brand.find(filter, { "__v": false })
+        .limit(limit)
+        .skip(skip);
+
     res.json({
         status: httpStatus.SUCCESS,
+        pagination: {
+                totalBrands,
+                page,
+                limit,
+                totalPages: Math.ceil(totalBrands / limit)
+            },
         data: {
-            brands
+            brands,
+            
         }
     });
 });
@@ -32,12 +49,12 @@ const getBrand = asyncWrapper(async (req, res) => {
 });
 
 const createBrand = asyncWrapper(async (req, res) => {
-    const { name, image } = req.body;
-    if (!name) {
-        throw AppError.create('Name is required', 400, httpStatus.FAIL);
+    const { title, image } = req.body;
+    if (!title) {
+        throw AppError.create('title is required', 400, httpStatus.FAIL);
     }
     const newBrand = new Brand({
-        name,
+        title,
         image
     });
     await newBrand.save();
@@ -51,11 +68,19 @@ const createBrand = asyncWrapper(async (req, res) => {
 
 const updateBrand = asyncWrapper(async (req, res) => {
     const brandId = req.params.id;
-    const updatedBrand = await Brand.updateOne({ _id: brandId }, { $set: { ...req.body } });
-    if (updatedBrand.matchedCount === 0) {
+
+    const brand = await Brand.findByIdAndUpdate(
+        brandId,
+        { $set: req.body },
+        { 
+            new: true,           
+            runValidators: true  
+        }    );
+
+    if (!brand) {
         throw AppError.create('Brand not found', 404, httpStatus.FAIL);
     }
-    const brand = await Brand.findById(brandId);
+
     res.json({
         status: httpStatus.SUCCESS,
         data: {
@@ -63,15 +88,20 @@ const updateBrand = asyncWrapper(async (req, res) => {
         }
     });
 });
-
+const Product = require('../models/product.model');
 const deleteBrand = asyncWrapper(async (req, res) => {
+    const productsWithBrand = await Product.find({ brand: req.params.id });
+
+    if (productsWithBrand.length > 0) {
+        throw AppError.create('Cannot delete brand with associated products', 400, httpStatus.FAIL);
+    }
     const result = await Brand.deleteOne({ _id: req.params.id });
+
     if (result.deletedCount === 0) {
         throw AppError.create('Brand not found', 404, httpStatus.FAIL);
     }
     res.json({
         status: httpStatus.SUCCESS,
-        data: null
     });
 });
 

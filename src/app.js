@@ -27,7 +27,7 @@ app.use('/orders', orderRoutes);
 // Catch-all for undefined routes
 app.use((req, res) => {
   res.status(404).json({
-    status: 'fail',
+    status: httpStatusText.FAIL,
     message: `Can't find ${req.originalUrl} on this server`
   });
 });
@@ -35,7 +35,17 @@ app.use((req, res) => {
 
 // Global error handler
 app.use((error, req, res, next) => {
-    // 1. Handle MongoDB Duplicate Key Errors (e.g., duplicate username)
+
+    //  Handle Mongoose Invalid ID (CastError)
+    if (error.name === 'CastError') {
+        return res.status(400).json({
+            status: 'fail',
+            message: `Invalid ID format`,
+            code: 400
+        });
+    }
+
+    //  Handle MongoDB Duplicate Key Errors (e.g., duplicate username)
     if (error.code === 11000) {
         const field = Object.keys(error.keyValue)[0];
         return res.status(400).json({
@@ -44,7 +54,7 @@ app.use((error, req, res, next) => {
         });
     }
 
-    // 2. Handle JWT Errors (Tokens expired or invalid)
+    //  Handle JWT Errors (Tokens expired or invalid)
     if (error.name === 'JsonWebTokenError') {
         return res.status(401).json({
             status: httpStatusText.FAIL,
@@ -58,7 +68,7 @@ app.use((error, req, res, next) => {
         });
     }
 
-    // 3. General Response for AppError.create() and others
+    // General Response for AppError.create() and others
     // We default to 500/ERROR if something unexpected happens
     const statusCode = error.statusCode || 500;
     const statusText = error.statusText || httpStatusText.ERROR;

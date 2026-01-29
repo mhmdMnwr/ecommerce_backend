@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { ROLES } = require('../config/permissions.js');
+const { ROLE_VALUES , ROLES } = require('../config/permissions.js');
 
 const userSchema = new mongoose.Schema({
     username: {
@@ -12,10 +12,15 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    status: {
+        type: String,
+        enum: ['active', 'inactive'],
+        default: 'active'
+    },
     role: {
         type: String,
-        enum: ROLES,
-        default: 'customer'
+        enum: ROLE_VALUES,
+        default: ROLES.CUSTOMER
     },
     totalOrders: {
         type: Number,
@@ -31,16 +36,22 @@ const userSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-// Ensures only one 'sup_admin' can exist in the database
-userSchema.pre('save', async function (next) {
-    if (this.isModified('role') && this.role === 'sup_admin') {
-        const User = mongoose.model('User');
-        const existingSup = await User.findOne({ role: 'sup_admin' });
-        if (existingSup && existingSup._id.toString() !== this._id.toString()) {
-            throw new Error('A Super Admin already exists.');
+
+
+userSchema.pre('save', async function () {
+    // 1. Singleton Admin Check
+    if (this.role === ROLES.ADMIN && (this.isNew || this.isModified('role'))) {
+        const AdminModel = this.constructor; 
+        const adminCount = await AdminModel.countDocuments({ role: ROLES.ADMIN });
+
+        if (adminCount > 0) {
+            throw new Error('Constraint Violation: Only one Admin account is allowed.');
         }
     }
-    next();
+
+    
+    
+    
 });
 
 module.exports = mongoose.model('User', userSchema);

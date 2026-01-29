@@ -1,8 +1,9 @@
 const express = require('express');
 const brandController = require('../controllers/brand.controller');
 const router = express.Router();
-const checkPermission = require('../middleware/checkPermission');
 const verifyToken = require('../middleware/verifyToken');
+const allowedTo = require('../middleware/allowedTo');
+const { ROLES } = require('../config/permissions');
 
 
 
@@ -10,11 +11,11 @@ router.use(verifyToken);
 
 router.route('/')
     .get(brandController.getAllBrands)
-    .post(checkPermission('brands'), brandController.createBrand);
+    .post(allowedTo(ROLES.ADMIN, ROLES.MANAGER), brandController.createBrand);
 
 router.route('/:id')
-    .get(checkPermission('brands'), brandController.getBrand)
-    .patch(checkPermission('brands'), brandController.updateBrand)
-    .delete(checkPermission('brands'), brandController.deleteBrand);
+    .get(brandController.getBrand)
+    .patch(allowedTo(ROLES.ADMIN, ROLES.MANAGER), brandController.updateBrand)
+    .delete(allowedTo(ROLES.ADMIN, ROLES.MANAGER), brandController.deleteBrand);
 
 module.exports = router;

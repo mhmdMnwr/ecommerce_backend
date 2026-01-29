@@ -13,13 +13,20 @@ const {validateAndCalculateOrder} = require('../utils/orderHelpers');
 const createOrder = asyncWrapper(async (req, res, next) => {
     const { items } = req.body;
     const user = req.currentUser;
+    const settings = await Settings.findOne();
+    const minRequired = settings ? settings.minOrderAmount : 50000;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
         return next(AppError.create('Order items are required', 400, httpStatus.FAIL));
     }
 
     const { finalItems, totalAmount } = await validateAndCalculateOrder(items, false);
-        
+        if (totalAmount < minRequired) {
+        return res.status(400).json({
+            status: httpStatus.FAIL,
+            message: `Order total must be at least ${minRequired} DZD. Your current total is ${totalAmount} DZD.`
+        });
+    }
        
 
     const newOrder = new Order({

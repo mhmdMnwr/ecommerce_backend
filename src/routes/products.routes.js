@@ -1,20 +1,20 @@
 const express = require('express');
 const productController = require('../controllers/product.controller');
 const router = express.Router();
-const checkPermission = require('../middleware/checkPermission');
 const verifyToken = require('../middleware/verifyToken');
+const allowedTo = require('../middleware/allowedTo');
+const { ROLES } = require('../config/permissions');
 
-
-router.use(verifyToken);
+router.use(verifyToken );
 
 
 router.route('/')
     .get(productController.getAllProducts)
-    .post(checkPermission('products'), productController.createProduct);
+    .post(allowedTo(ROLES.ADMIN, ROLES.MANAGER ), productController.createProduct);
 
 router.route('/:id')
     .get(productController.getProduct)
-    .patch(checkPermission('products'), productController.updateProduct)
-    .delete(checkPermission('products'), productController.deleteProduct);
+    .patch(allowedTo(ROLES.ADMIN, ROLES.MANAGER ), productController.updateProduct)
+    .delete(allowedTo(ROLES.ADMIN, ROLES.MANAGER ), productController.deleteProduct);
 
 module.exports = router;

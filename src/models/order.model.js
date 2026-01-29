@@ -9,8 +9,6 @@ const orderSchema = new mongoose.Schema({
         quantity: { type: Number, required: true, min: 1, max: 200 },
         units: { type: Number, required: true, min: 0 },
         price: { type: Number, required: true, min: 0 },
-        totalSold: { type: Number, required: true, min: 0, default: 0 },
-        totalRevenue: { type: Number, required: true, min: 0, default: 0 }
     }],
     totalAmount: { type: Number, required: true, min: 0 },
     status: { type: String, enum: ['pending', 'processing', 'delivered', 'shipped', 'cancelled'], default: 'pending' },

@@ -5,20 +5,45 @@ const bcrypt = require('bcryptjs');
 const asyncWrapper = require('../middleware/asyncWrapper');
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateJWT');
 const jwt = require('jsonwebtoken');
-const { ROLES } = require('../config/permissions.js');
+const { ROLES  } = require('../config/permissions.js');
 
 
 const getAllUsers = asyncWrapper(async (req, res) => {
-    const query = req.query || {};
-    const limit = query.limit || 10;
-    const page = query.page || 1;
-    const skip = (page - 1) * limit;
-    const users = await User.find().limit(limit).skip(skip);
+    const { limit = 10, page = 1, name, status , role } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    if (!role || ![ROLES.CUSTOMER, ROLES.MANAGER, ROLES.ADMIN, ROLES.SUPER_ADMIN].includes(role)) {
+        throw AppError.create('Valid role query parameter is required', 400, httpStatus.FAIL);
+    }
+    const filter = { role: role }; 
+
+    if (name) {
+        filter.username = { $regex: name, $options: 'i' };
+    }
+
+    
+    if (status) {
+        filter.status = status;
+    }
+
+    const users = await User.find(filter)
+        .select('-password -__v') 
+        .sort({ createdAt: -1 })  
+        .limit(parseInt(limit))
+        .skip(skip);
+
+    // 3. Get Total Count (for frontend pagination UI)
+    const totalUsers = await User.countDocuments(filter);
+
     res.json({
-        status: 'success',
-        data: {
-            users
-        }
+        status: httpStatus.SUCCESS,
+        results: users.length,
+        pagination: {
+            totalUsers,
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(totalUsers / limit)
+        },
+        data:  {users} 
     });
 });
 
@@ -34,7 +59,7 @@ const login = asyncWrapper(async (req, res, next) => {
 
     // 2. Find user (Username is unique)
     const user = await User.findOne({ username });
-    if (!user) {
+    if (!user ) {
         return next(AppError.create('Invalid credentials', 401, httpStatus.FAIL));
     }
 
@@ -44,6 +69,12 @@ const login = asyncWrapper(async (req, res, next) => {
         return next(AppError.create('Invalid credentials', 401, httpStatus.FAIL));
     }
 
+
+    if (user.status !== 'active') {
+        return next(AppError.create('Your account is inactive. Please contact support.', 403, httpStatus.FAIL));
+    }
+
+
     // 4. Token Generation
     const accessToken = generateAccessToken({ id: user._id, role: user.role });
     const refreshToken = generateRefreshToken({ id: user._id, role: user.role });
@@ -52,21 +83,14 @@ const login = asyncWrapper(async (req, res, next) => {
     const responseData = {
         accessToken,
         refreshToken,
-        user: {
-            username: user.username,
-            role: user.role
-        }
+        
     };
 
-    // If it's NOT a customer (likely a Staff member on the Web Dashboard),
-    // include the allowed pages to help the frontend build the sidebar.
-    if (user.role !== 'customer') {
-        responseData.allowedPages = ROLE_PAGES[user.role];
-    }
+    
 
     res.status(200).json({
         status: 'success',
-        data: responseData
+        data: { responseData }
     });
 });
 
@@ -81,26 +105,29 @@ const refreshToken = asyncWrapper(async (req, res) => {
         if (!user) {
             throw AppError.create('User not found', 404, httpStatus.FAIL);
         }
+        if(user.status !== 'active'){
+            throw AppError.create('User account is inactive', 403, httpStatus.FAIL);
+        }
         const accessToken = generateAccessToken({ id: user._id, role: user.role });
-        res.json({ status: 'success', data: { accessToken } });
+        res.json({ status: httpStatus.SUCCESS, data: { accessToken } });
     } catch (err) {
         throw AppError.create('Invalid refresh token', 401, httpStatus.FAIL);
     }
 });
 
-const getMe = asyncWrapper(async (req, res) => {
-    const user = await User.findById(req.currentUser.id).select('-password -__v');
-    if (!user) {
-        throw AppError.create('User not found', 404, httpStatus.FAIL);
-    }
+const getMe = asyncWrapper(async (req, res, next) => {
+    const user = await User.findById(req.currentUser.id).select('-password');
+    
+    if (!user) return next(AppError.create('User no longer exists', 404));
+
     res.json({
-        status: 'success',
-        data: user
+        status: httpStatus.SUCCESS,
+        data: { user }
     });
 });
 
 const registerCustomer = asyncWrapper(async (req, res, next) => {
-    const { username, password, address, phone } = req.body;
+    const { username, password,role , address, phone } = req.body;
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -109,78 +136,79 @@ const registerCustomer = asyncWrapper(async (req, res, next) => {
         password: hashedPassword,
         address,
         phone,
-        role: ROLES[0] // Default to 'customer'
+        role: ROLES.CUSTOMER 
     });
 
     await newUser.save();
     res.status(201).json({ status: httpStatus.SUCCESS, data: { user: newUser } });
 });
 
-// DOOR 2: Create Staff (Strictly Sup_Admin)
-const createAdminBySuper = asyncWrapper(async (req, res, next) => {
-    const { username, password, role } = req.body;
+const createManagerByAdmin = asyncWrapper(async (req, res, next) => {
+    const { username, password, address , phone } = req.body;
 
-
-
-    // 2. Prevent creating another sup_admin
-    if (role === 'sup_admin') {
-        return next(AppError.create('Cannot create another Super Admin', 400));
-    }
-
-    // 3. Validate that the role actually exists in your ROLES list
-    if (!ROLES.includes(role)) {
-        return next(AppError.create(`Role '${role}' does not exist in our system`, 400));
-    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newAdmin = new User({
-        username,
+        username: username,
         password: hashedPassword,
-        role: role || 'low_admin'
+        role:  ROLES.MANAGER,
+        address: address ,
+        phone: phone
     });
 
     await newAdmin.save();
     res.status(201).json({ status: httpStatus.SUCCESS, data: { user: newAdmin } });
 });
 
-// DOOR 3: Update Role (Strictly Sup_Admin)
-const updateUserRole = asyncWrapper(async (req, res, next) => {
-    const { userId, newRole } = req.body;
 
 
 
-    // 2. Validate the newRole exists and isn't sup_admin
-    if (!ROLES.includes(newRole) || newRole === 'sup_admin') {
-        return next(AppError.create('Invalid or restricted role target', 400));
-    }
+const toggleUserStatus = asyncWrapper(async (req, res) => {
+    const { userId } = req.params;
 
+    // 1. Find the user
     const user = await User.findById(userId);
-    if (!user) return next(AppError.create('User not found', 404));
 
-    // 3. Protect existing Super Admin
-    if (user.role === 'sup_admin') {
-        return next(AppError.create('The Super Admin account is protected', 403));
+    if (!user) {
+        return res.status(404).json({ 
+            status: httpStatus.FAIL, 
+            message: "User not found" 
+        });
     }
 
-    user.role = newRole;
+    // 2. Prevent the SuperAdmin from deactivating themselves by accident!
+    if (userId === req.currentUser.id.toString()) {
+        return res.status(400).json({ 
+            status: httpStatus.FAIL, 
+            message: "You cannot deactivate your own admin account." 
+        });
+    }
+
+    // 3. Flip the status
+    user.status = user.status === 'active' ? 'inactive' : 'active';
     await user.save();
 
-    res.status(200).json({ status: httpStatus.SUCCESS, message: `Role updated to ${newRole}` });
+    // 4. Send back the result
+    res.status(200).json({
+        status: httpStatus.SUCCESS,
+        message: `User is now ${user.status}`,
+        data: {
+            userId: user._id,
+            newStatus: user.status
+        }
+    });
 });
-
-
-
 
 
 
 module.exports = {
     getAllUsers,
     registerCustomer,
-    createAdminBySuper,
-    updateUserRole,
+    createManagerByAdmin,
     login,
     refreshToken,
-    getMe
+    getMe,
+    toggleUserStatus
 };
 

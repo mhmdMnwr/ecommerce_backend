@@ -2,13 +2,14 @@ const express = require('express');
 const feedbackController = require('../controllers/feedback.controller');
 const router = express.Router();
 const verifyToken = require('../middleware/verifyToken');
-const checkPermission = require('../middleware/checkPermission');
+const allowedTo = require('../middleware/allowedTo');
+const {ROLES} = require('../config/permissions');
 
 router.use(verifyToken);
 
 
 router.route('/')
-    .get(checkPermission('feedbacks'), feedbackController.getAllFeedbacks)
-    .post(feedbackController.createFeedback);
+    .get( feedbackController.getAllFeedbacks)
+    .post(allowedTo(ROLES.ADMIN, ROLES.MANAGER), feedbackController.createFeedback);
 
 module.exports = router;

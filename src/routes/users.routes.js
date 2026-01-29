@@ -3,11 +3,11 @@ const express = require('express');
 const verifyToken = require('../middleware/verifyToken');
 const userController = require('../controllers/user.controller');
 const router = express.Router();
-const checkPermission = require('../middleware/checkPermission');
 const allowedTo = require('../middleware/allowedTo');
+const { ROLES } = require('../config/permissions');
 
 router.route('/')
-    .get(verifyToken ,checkPermission('users'), userController.getAllUsers);
+    .get(verifyToken , allowedTo(ROLES.ADMIN), userController.getAllUsers);
 
  
 
@@ -18,15 +18,16 @@ router.route('/refresh-token')
     .post(userController.refreshToken);
 
 router.route('/me')
-    .get(verifyToken, userController.getMe);   
+    .get(verifyToken,allowedTo(ROLES.CUSTOMER, ROLES.MANAGER, ROLES.ADMIN), userController.getMe);   
 
     router.route('/registerCustomer')
     .post(userController.registerCustomer);
 
-    router.route('/createAdminBySuper' )
-    .post(verifyToken, checkPermission('users') , allowedTo('sup_admin'), userController.createAdminBySuper);
+    router.route('/createManagerByAdmin' )
+    .post(verifyToken, allowedTo(ROLES.ADMIN), userController.createManagerByAdmin);
 
-    router.route('/updateUserRole' )
-    .put(verifyToken, checkPermission('users') , allowedTo('sup_admin'), userController.updateUserRole);
+
+router.route('/:userId/toggleStatus')
+    .patch(verifyToken, allowedTo(ROLES.ADMIN), userController.toggleUserStatus);
 
 module.exports = router;

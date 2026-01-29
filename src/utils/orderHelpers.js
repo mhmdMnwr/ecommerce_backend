@@ -11,11 +11,15 @@ const validateAndCalculateOrder = async (items, isAdmin = false) => {
     let calculatedTotal = 0;
     const finalItems = items.map(item => {
         const product = productMap[item.productId];
+        
         if (!product) throw new Error(`Product ${item.productId} not found`);
 
-        // PRICE LOGIC: Use provided price if Admin, else use DB Price
+        // --- CHECK THE STATE INSTEAD OF QUANTITY ---
+        if (product.state === 'not available') {
+            throw new Error(`Product "${product.title}" is currently out of stock/not available.`);
+        }
+
         const price = (isAdmin && item.price !== undefined) ? item.price : product.price;
-        
         calculatedTotal += price * item.quantity;
         
         return {
@@ -30,4 +34,8 @@ const validateAndCalculateOrder = async (items, isAdmin = false) => {
         finalItems,
         totalAmount: Math.round(calculatedTotal * 100) / 100
     };
+};
+
+module.exports = {
+    validateAndCalculateOrder
 };
