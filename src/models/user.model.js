@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const { RoleValues , Roles } = require('../constants/roles.js');
 const { UserStatus , StatusValues } = require('../constants/userStatus.js');
-const AppError = require('../constants/appErrors.js');
+const AppError = require('../utils/appErrors.js');
 
 const userSchema = new mongoose.Schema({
     username: {

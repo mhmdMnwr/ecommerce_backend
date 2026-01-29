@@ -1,5 +1,5 @@
 // src/middleware/allowedTo.js
-const AppError = require('../constants/appErrors');
+const AppError = require('../utils/appErrors');
 const httpStatus = require('../constants/httpStatusText');
 const User = require('../models/user.model');
 

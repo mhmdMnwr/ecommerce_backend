@@ -1,26 +1,22 @@
-
-
-const {validateAndCalculateOrder} = require('../utils/orderHelpers');
 const Order = require('../models/order.model');
 const Product = require('../models/product.model');
-const AppError = require('../constants/appErrors');
-const httpStatus = require('../constants/httpStatusText');
-const asyncWrapper = require('../middleware/asyncWrapper');
 const User = require('../models/user.model');
 const Settings = require('../models/settings.model');
-const {OrderStatus} = require('../constants/orderStatus');
+const httpStatus = require('../constants/httpStatusText');
+const { OrderStatus } = require('../constants/orderStatus');
+const AppError = require('../utils/appErrors');
+const asyncWrapper = require('../middleware/asyncWrapper');
+const ApiResponse = require('../utils/apiResponse');
+const { validateAndCalculateOrder } = require('../utils/orderHelpers');
 
-
+// @desc    Admin: Update order items and prices
 const updateOrderContentAdmin = asyncWrapper(async (req, res, next) => {
     const { orderId } = req.params;
     const { items } = req.body;
 
     const order = await Order.findById(orderId);
-    if (!order) {
-        return next(AppError.create('Order not found', 404, httpStatus.FAIL));
-    }
+    if (!order) return next(AppError.create('Order not found', 404, httpStatus.FAIL));
 
-    // Protection: Even admins shouldn't edit a cancelled order without re-opening it
     if (order.status === OrderStatus.CANCELLED) {
         return next(AppError.create('Cannot modify a cancelled order. Change status first.', 400, httpStatus.FAIL));
     }
@@ -29,97 +25,78 @@ const updateOrderContentAdmin = asyncWrapper(async (req, res, next) => {
         return next(AppError.create('Items array is required', 400, httpStatus.FAIL));
     }
 
-    
+    // isAdmin = true allows price overrides from the body
     const { finalItems, totalAmount } = await validateAndCalculateOrder(items, true);
 
-    // Update the order
     order.items = finalItems;
     order.totalAmount = totalAmount;
-    order.updatedAt = Date.now();
-
     await order.save();
 
-    res.status(200).json({
-        status: httpStatus.SUCCESS,
-        message: 'Order updated successfully by admin',
-        data: { order }
-    });
+    res.status(200).json(
+        new ApiResponse(200, 'Order content updated by admin', order)
+    );
 });
 
+// @desc    Customer: Update own pending order
 const updateMyOrder = asyncWrapper(async (req, res, next) => {
     const { orderId } = req.params;
     const { items } = req.body;
     const userId = req.currentUser.id;
+    
     const settings = await Settings.findOne();
-        const minRequired = settings ? settings.minOrderAmount : 50000;
+    const minRequired = settings ? settings.minOrderAmount : 50000;
 
     const order = await Order.findById(orderId);
     if (!order) return next(AppError.create('Order not found', 404, httpStatus.FAIL));
 
-    // A. Verify Ownership
     if (order.customerId.toString() !== userId) {
         return next(AppError.create('Access Denied', 403, httpStatus.FAIL));
     }
 
-    // B. Verify State (YOUR LOGIC: Check state before calling the function)
     if (order.status !== OrderStatus.PENDING) {
         return next(AppError.create(`Cannot edit order in ${order.status} status.`, 400, httpStatus.FAIL));
     }
 
-    // C. Call helper with isAdmin = false (Safety switch: ignores prices in req.body)
     const { finalItems, totalAmount } = await validateAndCalculateOrder(items, false);
 
-    if(totalAmount < minRequired){
-        return next(AppError.create(`Minimum order amount is ${minRequired}`, 400, httpStatus.FAIL));
+    if (totalAmount < minRequired) {
+        return next(AppError.create(`Minimum order amount is ${minRequired} DZD`, 400, httpStatus.FAIL));
     }
-
 
     order.items = finalItems;
     order.totalAmount = totalAmount;
-    order.updatedAt = Date.now();
     await order.save();
 
-    res.status(200).json({ status: httpStatus.SUCCESS, data: { order } });
+    res.status(200).json(
+        new ApiResponse(200, "Your order has been updated", order)
+    );
 });
 
-
+// @desc    Customer: Cancel own pending order
 const cancelMyOrder = asyncWrapper(async (req, res, next) => {
     const { orderId } = req.params;
     const userId = req.currentUser.id;
 
     const order = await Order.findById(orderId);
+    if (!order) return next(AppError.create('Order not found', 404, httpStatus.FAIL));
 
-    if (!order) {
-        return next(AppError.create('Order not found', 404, httpStatus.FAIL));
-    }
-
-    // 1. Ownership Check
     if (order.customerId.toString() !== userId) {
         return next(AppError.create('You can only cancel your own orders', 403, httpStatus.FAIL));
     }
 
-    // 2. Status Constraint (Strict)
-    // If it's already "processing", "shipped", or "delivered", the customer can't touch it.
     if (order.status !== OrderStatus.PENDING) {
-        return next(AppError.create(
-            `Cannot cancel order. It is already ${order.status}. Please contact support.`, 
-            400, 
-            httpStatus.FAIL
-        ));
+        return next(AppError.create(`Cannot cancel order. It is already ${order.status}.`, 400, httpStatus.FAIL));
     }
 
-    // 3. Update the state
     order.status = OrderStatus.CANCELLED;
-    order.updatedAt = Date.now();
     await order.save();
 
-    res.status(200).json({ 
-        status: httpStatus.SUCCESS, 
-        message: 'Order cancelled successfully' 
-    });
+    res.status(200).json(
+        new ApiResponse(200, 'Order cancelled successfully', null)
+    );
 });
 
-
+// @desc    Admin: Change order status and update financial analytics
 const updateOrderStatus = asyncWrapper(async (req, res, next) => {
     const { orderId } = req.params;
     const { status } = req.body;
@@ -129,51 +106,43 @@ const updateOrderStatus = asyncWrapper(async (req, res, next) => {
 
     const oldStatus = order.status;
 
-    // --- CASE A: DELIVERED (Money IN) ---
+    // --- FINANCIAL ANALYTICS LOGIC ---
+    // Transitioning to DELIVERED: Increment totals
     if (status === OrderStatus.DELIVERED && oldStatus !== OrderStatus.DELIVERED) {
-        
-        await User.findByIdAndUpdate(order.customerId, { 
-            $inc: { totalSpent: order.totalAmount } 
-        });
+        await User.findByIdAndUpdate(order.customerId, { $inc: { totalSpent: order.totalAmount } });
 
-        const productUpdates = order.items.map(item => {
-            return Product.findByIdAndUpdate(item.productId, {
+        const productUpdates = order.items.map(item => 
+            Product.findByIdAndUpdate(item.productId, {
                 $inc: { 
                     totalSold: item.quantity, 
                     totalRevenue: (item.price * item.quantity) 
                 }
-            });
-        });
+            })
+        );
         await Promise.all(productUpdates);
     }
 
-    // --- CASE B: CANCELLED AFTER DELIVERY (Money OUT) ---
+    // Reversing DELIVERED (if cancelled/returned): Decrement totals
     if (status === OrderStatus.CANCELLED && oldStatus === OrderStatus.DELIVERED) {
-        // USE customerId HERE
-        await User.findByIdAndUpdate(order.customerId, { 
-            $inc: { totalSpent: -order.totalAmount } 
-        });
+        await User.findByIdAndUpdate(order.customerId, { $inc: { totalSpent: -order.totalAmount } });
 
-        const productReversals = order.items.map(item => {
-            return Product.findByIdAndUpdate(item.productId, {
+        const productReversals = order.items.map(item => 
+            Product.findByIdAndUpdate(item.productId, {
                 $inc: { 
                     totalSold: -item.quantity, 
                     totalRevenue: -(item.price * item.quantity) 
                 }
-            });
-        });
+            })
+        );
         await Promise.all(productReversals);
     }
 
     order.status = status;
-    order.updatedAt = Date.now();
     await order.save();
 
-    res.status(200).json({ 
-        status: httpStatus.SUCCESS, 
-        message: `Order status updated to ${status}`,
-        data: { order } 
-    });
+    res.status(200).json(
+        new ApiResponse(200, `Order status updated to ${status}`, order)
+    );
 });
 
 module.exports = { 
@@ -181,4 +150,4 @@ module.exports = {
     cancelMyOrder,
     updateOrderStatus,
     updateMyOrder
- };
+};

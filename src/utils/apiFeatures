@@ -1,0 +1,57 @@
+// src/utils/ApiFeatures.js
+
+class ApiFeatures {
+    constructor(mongooseQuery, queryString) {
+        this.mongooseQuery = mongooseQuery; // The pending DB query (e.g., User.find())
+        this.queryString = queryString;     // The req.query object from Express
+    }
+
+    filter() {
+        // 1. Exclude reserved params
+        const queryObj = { ...this.queryString };
+        const excludedFields = ['page', 'sort', 'limit', 'fields'];
+        excludedFields.forEach(el => delete queryObj[el]);
+
+        // 2. Advanced Filtering (gte, gt, lte, lt)
+        // Converts ?price[gte]=100 to Mongo syntax { price: { $gte: 100 } }
+        let queryStr = JSON.stringify(queryObj);
+        queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`);
+
+        this.mongooseQuery = this.mongooseQuery.find(JSON.parse(queryStr));
+        return this; // Return 'this' to allow method chaining
+    }
+
+    sort() {
+        if (this.queryString.sort) {
+            // Converts ?sort=price,-createdAt to "price -createdAt"
+            const sortBy = this.queryString.sort.split(',').join(' ');
+            this.mongooseQuery = this.mongooseQuery.sort(sortBy);
+        } else {
+            // Default sort
+            this.mongooseQuery = this.mongooseQuery.sort('-createdAt');
+        }
+        return this;
+    }
+
+    limitFields() {
+        if (this.queryString.fields) {
+            // Converts ?fields=name,email to "name email"
+            const fields = this.queryString.fields.split(',').join(' ');
+            this.mongooseQuery = this.mongooseQuery.select(fields);
+        } else {
+            this.mongooseQuery = this.mongooseQuery.select('-__v');
+        }
+        return this;
+    }
+
+    paginate() {
+        const page = this.queryString.page * 1 || 1;
+        const limit = this.queryString.limit * 1 || 10;
+        const skip = (page - 1) * limit;
+
+        this.mongooseQuery = this.mongooseQuery.skip(skip).limit(limit);
+        return this;
+    }
+}
+
+module.exports = ApiFeatures;
