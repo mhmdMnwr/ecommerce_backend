@@ -31,7 +31,7 @@ const getAllBrands = asyncWrapper(async (req, res) => {
     });
 });
 
-const getBrand = asyncWrapper(async (req, res) => {
+const getBrand = asyncWrapper(async (req, res , next) => {
     const brand = await Brand.findById(req.params.id);
     if (!brand) {
         return next ( AppError.create('Brand not found', 404, httpStatus.FAIL));
@@ -44,7 +44,7 @@ const getBrand = asyncWrapper(async (req, res) => {
     });
 });
 
-const createBrand = asyncWrapper(async (req, res) => {
+const createBrand = asyncWrapper(async (req, res , next) => {
     const { title, image } = req.body;
     if (!title) {
         return next ( AppError.create('title is required', 400, httpStatus.FAIL))
@@ -62,7 +62,7 @@ const createBrand = asyncWrapper(async (req, res) => {
     });
 });
 
-const updateBrand = asyncWrapper(async (req, res) => {
+const updateBrand = asyncWrapper(async (req, res , next) => {
     const brandId = req.params.id;
 
     const brand = await Brand.findByIdAndUpdate(
@@ -85,7 +85,7 @@ const updateBrand = asyncWrapper(async (req, res) => {
     });
 });
 const Product = require('../models/product.model');
-const deleteBrand = asyncWrapper(async (req, res) => {
+const deleteBrand = asyncWrapper(async (req, res , next) => {
     const productsWithBrand = await Product.find({ brand: req.params.id });
 
     if (productsWithBrand.length > 0) {

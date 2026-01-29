@@ -50,6 +50,8 @@ const updateMyOrder = asyncWrapper(async (req, res, next) => {
     const { orderId } = req.params;
     const { items } = req.body;
     const userId = req.currentUser.id;
+    const settings = await Settings.findOne();
+        const minRequired = settings ? settings.minOrderAmount : 50000;
 
     const order = await Order.findById(orderId);
     if (!order) return next(AppError.create('Order not found', 404, httpStatus.FAIL));
@@ -67,8 +69,8 @@ const updateMyOrder = asyncWrapper(async (req, res, next) => {
     // C. Call helper with isAdmin = false (Safety switch: ignores prices in req.body)
     const { finalItems, totalAmount } = await validateAndCalculateOrder(items, false);
 
-    if(totalAmount < 5000){
-        return next(AppError.create('Minimum order amount is 5000', 400, httpStatus.FAIL));
+    if(totalAmount < minRequired){
+        return next(AppError.create(`Minimum order amount is ${minRequired}`, 400, httpStatus.FAIL));
     }
 
 

@@ -9,7 +9,7 @@ router.use(verifyToken);
 
 
 router.route('/')
-    .get( feedbackController.getAllFeedbacks)
-    .post(allowedTo(Roles.ADMIN, Roles.MANAGER), feedbackController.createFeedback);
+    .get(allowedTo(Roles.ADMIN) ,feedbackController.getAllFeedbacks)
+    .post( feedbackController.createFeedback);
 
 module.exports = router;

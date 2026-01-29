@@ -12,6 +12,8 @@ const categoryRoutes = require('./routes/categories.routes');
 const feedbackRoutes = require('./routes/feedback.routes');
 const httpStatusText = require('./constants/httpStatusText');
 const orderRoutes = require('./routes/orders.routes');
+const settingsRoutes = require('./routes/settings.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
 
 app.use(cors());
 app.use(express.json());
@@ -22,6 +24,8 @@ app.use('/brands', brandRoutes);
 app.use('/categories', categoryRoutes);
 app.use('/feedbacks', feedbackRoutes);
 app.use('/orders', orderRoutes);
+app.use('/settings' , settingsRoutes);
+app.use('/dashboard' , dashboardRoutes)
 
 
 // Catch-all for undefined routes
@@ -38,8 +42,7 @@ app.use((error, req, res, next) => {
 
     //  Handle Mongoose Invalid ID (CastError)
     if (error.name === 'CastError') {
-        return 
-        res.status(400).json({
+        return  res.status(400).json({
             status: 'fail',
             message: `Invalid ID format`,
             code: 400

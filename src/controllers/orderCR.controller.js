@@ -4,24 +4,24 @@ const AppError = require('../constants/appErrors');
 const asyncWrapper = require('../middleware/asyncWrapper'); 
 const {validateAndCalculateOrder} = require('../utils/orderHelpers');
 const User = require('../models/user.model');
-// const Settings = require('../models/settings.model');
+const Settings = require('../models/settings.model');
 
 
 
 const createOrder = asyncWrapper(async (req, res, next) => {
     const { items } = req.body;
     const user = req.currentUser;
-    // const settings = await Settings.findOne();
-    // const minRequired = settings ? settings.minOrderAmount : 50000;
+    const settings = await Settings.findOne();
+    const minRequired = settings ? settings.minOrderAmount : 50000;
 
     if (!items) {
         return next(AppError.create('Order items are required', 400, httpStatus.FAIL));
     }
 
     const { finalItems, totalAmount } = await validateAndCalculateOrder(items, false);
-        if (totalAmount < 5000) {
+        if (totalAmount < minRequired) {
         return next(AppError.create(
-            `Order total must be at least 5000 DZD. Your current total is ${totalAmount} DZD.`,
+            `Order total must be at least ${minRequired} DZD. Your current total is ${totalAmount} DZD.`,
             400,
             httpStatus.FAIL
         ));

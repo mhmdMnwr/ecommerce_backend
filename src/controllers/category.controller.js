@@ -31,7 +31,7 @@ const getAllCategories = asyncWrapper(async (req, res) => {
     });
 });
 
-const getCategory = asyncWrapper(async (req, res) => {
+const getCategory = asyncWrapper(async (req, res, next) => {
     const category = await Category.findById(req.params.id);
     if (!category) {
         return next ( AppError.create('Category not found', 404, httpStatus.FAIL));
@@ -44,7 +44,7 @@ const getCategory = asyncWrapper(async (req, res) => {
     });
 });
 
-const createCategory = asyncWrapper(async (req, res) => {
+const createCategory = asyncWrapper(async (req, res, next) => {
     const { title, image } = req.body;
     if (!title) {
         return next ( AppError.create('Title is required', 400, httpStatus.FAIL));
@@ -62,7 +62,7 @@ const createCategory = asyncWrapper(async (req, res) => {
     });
 });
 
-const updateCategory = asyncWrapper(async (req, res) => {
+const updateCategory = asyncWrapper(async (req, res, next) => {
     const categoryId = req.params.id;
     const updatedCategory = await Category.updateOne({ _id: categoryId }, { $set: { ...req.body } });
     if (updatedCategory.matchedCount === 0) {
@@ -77,7 +77,7 @@ const updateCategory = asyncWrapper(async (req, res) => {
     });
 });
 const Product = require('../models/product.model');
-const deleteCategory = asyncWrapper(async (req, res) => {
+const deleteCategory = asyncWrapper(async (req, res, next) => {
     const productsWithCategory = await Product.find({ category: req.params.id });
     if (productsWithCategory.length > 0) {
         return next ( AppError.create('Cannot delete category with associated products', 400, httpStatus.FAIL));

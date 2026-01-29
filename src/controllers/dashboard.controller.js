@@ -3,49 +3,69 @@ const Order = require('../models/order.model');
 const User = require('../models/user.model');
 const asyncWrapper = require('../middleware/asyncWrapper');
 const httpStatus = require('../constants/httpStatusText');
+const {OrderStatus} = require('../constants/orderStatus');
+const {Roles} = require('../constants/roles');
 
 const getTotalsWithGrowth = asyncWrapper(async (req, res) => {
     const now = new Date();
-    
-    // Define the two 30-day blocks
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(now.getDate() - 30);
     
     const sixtyDaysAgo = new Date();
     sixtyDaysAgo.setDate(now.getDate() - 60);
+    const status = OrderStatus.PENDING;
+    const customer = Roles.CUSTOMER;
 
-    const [currentStats, previousStats] = await Promise.all([
-        // Block 1: Last 30 days
+    const [allTimeStats, currentPeriod, previousPeriod, clientStats] = await Promise.all([
+        // 1. Grand Totals (All Time)
         Order.aggregate([
-            { $match: { status: 'delivered', updatedAt: { $gte: thirtyDaysAgo } } },
+            { $match: { status: status } },
+            { $group: { _id: null, totalRev: { $sum: "$totalAmount" }, totalCount: { $sum: 1 } } }
+        ]),
+        // 2. Current Month (Last 30 days)
+        Order.aggregate([
+            { $match: { status: status, updatedAt: { $gte: thirtyDaysAgo } } },
             { $group: { _id: null, rev: { $sum: "$totalAmount" }, count: { $sum: 1 } } }
         ]),
-        // Block 2: 30 days before that
+        // 3. Previous Month (30-60 days ago)
         Order.aggregate([
-            { $match: { status: 'delivered', updatedAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } } },
+            { $match: { status: status, updatedAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } } },
             { $group: { _id: null, rev: { $sum: "$totalAmount" }, count: { $sum: 1 } } }
+        ]),
+        // 4. Clients (Total vs New)
+        Promise.all([
+            User.countDocuments({ role: customer }), // All time clients
+            User.countDocuments({ role: customer, createdAt: { $gte: thirtyDaysAgo } }), // New this month
+            User.countDocuments({ role: customer, createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }) // New last month
         ])
     ]);
 
-    const curr = currentStats[0] || { rev: 0, count: 0 };
-    const prev = previousStats[0] || { rev: 0, count: 0 };
+    // Data Extraction
+    const total = allTimeStats[0] || { totalRev: 0, totalCount: 0 };
+    const curr = currentPeriod[0] || { rev: 0, count: 0 };
+    const prev = previousPeriod[0] || { rev: 0, count: 0 };
+    const [totalClients, newClientsCurr, newClientsPrev] = clientStats;
 
-    // Smart Percentage Logic
+    // Growth Helper
     const calcGrowth = (c, p) => {
-        if (p === 0) return c > 0 ? 100 : 0; // If prev was 0 and now we have sales, that's 100% growth
+        if (p === 0) return c > 0 ? 100 : 0;
         return (((c - p) / p) * 100).toFixed(2);
     };
 
     res.status(200).json({
-        status: "success",
+        status: httpStatus.SUCCESS,
         data: {
             revenue: {
-                total: curr.rev,
+                total: total.totalRev,
                 growth: calcGrowth(curr.rev, prev.rev)
             },
             orders: {
-                total: curr.count,
+                total: total.totalCount,
                 growth: calcGrowth(curr.count, prev.count)
+            },
+            clients: {
+                total: totalClients,
+                growth: calcGrowth(newClientsCurr, newClientsPrev)
             }
         }
     });
@@ -90,7 +110,7 @@ const getAnalytics = asyncWrapper(async (req, res) => {
         result = await Order.aggregate([
             { 
                 $match: { 
-                    status: 'delivered', 
+                    status: OrderStatus.PENDING, 
                     updatedAt: { $gte: startDate } 
                 } 
             },
@@ -105,7 +125,7 @@ const getAnalytics = asyncWrapper(async (req, res) => {
     }
 
     res.status(200).json({
-        status: "success",
+        status: httpStatus.SUCCESS,
         info: {
             selectedRange: range || 'week',
             selectedType: type || 'revenue'
@@ -118,50 +138,66 @@ const getAnalytics = asyncWrapper(async (req, res) => {
 
 const getTopProductsAnalytics = asyncWrapper(async (req, res) => {
     // 1. Get parameters from URL: ?limit=10&type=revenue
-    const limit = parseInt(req.query.limit) || 5; 
+    const limit = parseInt(req.query.limit)<15 ? parseInt(req.query.limit) : 5; 
     const type = req.query.type === 'revenue' ? 'totalRevenue' : 'totalQty';
 
     const topProducts = await Order.aggregate([
-        { $match: { status: 'delivered' } },
-        { $unwind: "$items" },
-        {
-            $group: {
-                _id: "$items.productId",
-                name: { $first: "$items.name" },
-                totalQty: { $sum: "$items.quantity" },
-                totalRevenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } }
-            }
-        },
-        // 2. Sort based on the user's choice (Qty or Revenue)
-        { $sort: { [type]: -1 } },
-        { $limit: limit },
-        
-        // 3. Optional: Calculate the sum of these Top X products to get percentages
-        {
-            $group: {
-                _id: null,
-                allProducts: { $push: "$$ROOT" },
-                combinedTotal: { $sum: `$${type}` }
-            }
-        },
-        { $unwind: "$allProducts" },
-        {
-            $project: {
-                _id: "$allProducts._id",
-                name: "$allProducts.name",
-                value: `$allProducts.${type}`,
-                percentage: { 
-                    $multiply: [
-                        { $divide: [`$allProducts.${type}`, "$combinedTotal"] }, 
-                        100 
-                    ] 
-                }
+    { $match: { status: OrderStatus.PENDING } },
+    { $unwind: "$items" },
+    {
+        $group: {
+            _id: "$items.productId",
+            // We sum qty and revenue first to keep the group small
+            totalQty: { $sum: "$items.quantity" },
+            totalRevenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } }
+        }
+    },
+    // --- START POPULATION ---
+    {
+        $lookup: {
+            from: "products",       
+            localField: "_id",      
+            foreignField: "_id",    
+            as: "productDetails"    
+        }
+    },
+    { $unwind: "$productDetails" }, 
+  
+    
+    {
+        $addFields: {
+            title: "$productDetails.title" // Extract the title
+        }
+    },
+    { $sort: { [type]: -1 } },
+    { $limit: limit },
+    
+    // Part 3: Percentage Calculation
+    {
+        $group: {
+            _id: null,
+            allProducts: { $push: "$$ROOT" },
+            combinedTotal: { $sum: `$${type}` }
+        }
+    },
+    { $unwind: "$allProducts" },
+    {
+        $project: {
+            _id: "$allProducts._id",
+            title: "$allProducts.title",
+            value: `$allProducts.${type}`,
+            percentage: { 
+                $multiply: [
+                    { $divide: [`$allProducts.${type}`, "$combinedTotal"] }, 
+                    100 
+                ] 
             }
         }
-    ]);
+    }
+]);
 
     res.status(200).json({
-        status: "success",
+        status: httpStatus.SUCCESS,
         data: { topProducts }
     });
 });
@@ -170,30 +206,30 @@ const getTopProductsAnalytics = asyncWrapper(async (req, res) => {
 const getTopClients = asyncWrapper(async (req, res) => {
     // 1. Get query parameters
     const page = parseInt(req.query.page) || 1;
-    const limit = 10;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     const sortBy = req.query.sortBy === 'revenue' ? 'totalSpent' : 'totalOrders';
 
     // 2. Query the User model
     // We already have totalSpent and totalOrders in the User model (from our earlier step!)
-    const clients = await User.find({ role: 'USER' }) // Filter out other Admins
-        .select('firstName lastName email totalSpent totalOrders')
+    const clients = await User.find({ role: Roles.CUSTOMER }) // Filter out other Admins
+        .select('username totalSpent totalOrders')
         .sort({ [sortBy]: -1 }) // Sort descending (Highest first)
         .skip(skip)
         .limit(limit);
 
     // 3. Get total count for pagination math on frontend
-    const totalClients = await User.countDocuments({ role: 'USER' });
+    const totalClients = await User.countDocuments({ role: Roles.CUSTOMER });
 
     res.status(200).json({
-        status: "success",
-        results: clients.length,
-        totalClients,
-        currentPage: page,
-        totalPages: Math.ceil(totalClients / limit),
+        status: httpStatus.SUCCESS,
+        pagination:{
+            limit,
+            page,
+            totalPages: Math.ceil(totalClients / limit)
+        },
         data: clients.map(user => ({
-            name: `${user.firstName} ${user.lastName}`,
-            email: user.email,
+            name: user.username,
             value: user[sortBy] // Returns either the amount or the count based on the filter
         }))
     });
@@ -220,7 +256,7 @@ const getRevenueReport = asyncWrapper(async (req, res) => {
 
     // 2. The Main Aggregation
     const stats = await Order.aggregate([
-        { $match: { status: 'delivered' } },
+        { $match: { status: OrderStatus.PENDING } },
         {
             $group: {
                 _id: { $dateToString: { format: groupFormat, date: "$updatedAt" } },
@@ -244,7 +280,7 @@ const getRevenueReport = asyncWrapper(async (req, res) => {
     const resultData = stats[0].data;
 
     res.status(200).json({
-        status: "success",
+        status: httpStatus.SUCCESS,
         pagination: {
             totalRecords,
             currentPage: parseInt(page),

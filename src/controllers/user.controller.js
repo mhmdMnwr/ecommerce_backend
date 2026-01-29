@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken');
 const { Roles  } = require('../constants/roles.js');
 
 
-const getAllUsers = asyncWrapper(async (req, res) => {
+const getAllUsers = asyncWrapper(async (req, res, next) => {
     const { limit = 10, page = 1, name, status , role } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
@@ -93,7 +93,7 @@ const login = asyncWrapper(async (req, res, next) => {
     });
 });
 
-const refreshToken = asyncWrapper(async (req, res) => {
+const refreshToken = asyncWrapper(async (req, res, next) => {
     const { token } = req.body;
     if (!token) {
         return next ( AppError.create('Token is required', 401, httpStatus.FAIL));

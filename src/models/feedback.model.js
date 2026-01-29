@@ -1,13 +1,11 @@
 const mongoose = require('mongoose')
 
 const feedbackSchema = new mongoose.Schema({
-    username: {
-        type: String,
-        required: true
-    },
-    userId: {
-        type: String,
-        required: true
+    
+    customer: {
+        type: mongoose.Schema.Types.ObjectId,
+              ref: 'User',
+              default: null,
 
     },
     comment: {

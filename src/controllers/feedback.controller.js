@@ -12,33 +12,32 @@ const getAllFeedbacks = asyncWrapper(async (req, res) => {
     const page = parseInt(query.page) || 1;
     const skip = (page - 1) * limit;
 
-    // LOGIC: If user is NOT admin, only show THEIR feedbacks
-    // Assuming your auth middleware sets req.currentUser
-    const filter = req.currentUser.role === 'sup_admin' ? {} : { userId: req.currentUser.id };
-
-    const feedbacks = await Feedback.find(filter, { "__v": false })
+    
+    const feedbacks = await Feedback.find({},  { "__v": false })
         .sort({ date: -1 })
+        .populate('customer', 'username')
         .limit(limit)
         .skip(skip);
 
     // Get total for pagination
-    const total = await Feedback.countDocuments(filter);
+    const total = await Feedback.countDocuments();
 
     res.json({
         status: httpStatus.SUCCESS,
         data: {
-            feedbacks,
+            
             pagination: {
-                total,
+                limit,
                 page,
                 totalPages: Math.ceil(total / limit)
-            }
+            },
+            data: { feedbacks }
         }
     });
 });
 
 // CREATE FEEDBACK (Secure)
-const createFeedback = asyncWrapper(async (req, res) => {
+const createFeedback = asyncWrapper(async (req, res, next) => {
     const { comment } = req.body; 
     
     // Check comment exists
@@ -46,11 +45,10 @@ const createFeedback = asyncWrapper(async (req, res) => {
         return next ( AppError.create('Comment is required', 400, httpStatus.FAIL));
     }
 
-        const username = req.currentUser.username;
+        
     // DON'T take userId from body. Take it from the authenticated user (token).
     const newFeedback = new Feedback({
-        userId: req.currentUser.id, // Securely identified
-        username: username, 
+        customer: req.currentUser.id, 
         comment
     });
 
@@ -58,7 +56,7 @@ const createFeedback = asyncWrapper(async (req, res) => {
     
     res.status(201).json({
         status: httpStatus.SUCCESS,
-        data: { feedback: newFeedback } // Good practice to return the created object
+        data: {  newFeedback } // Good practice to return the created object
     });
 });
 module.exports = {

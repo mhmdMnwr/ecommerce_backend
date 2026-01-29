@@ -5,6 +5,7 @@ const asyncWrapper = require('../middleware/asyncWrapper');
 const Brand = require('../models/brand.model');
 const Category = require('../models/category.model');
 const mongoose = require('mongoose');
+const Order = require('../models/order.model');
 
 const getAllProducts = asyncWrapper(async (req, res) => {
     const query = req.query || {};
@@ -71,7 +72,7 @@ const getAllProducts = asyncWrapper(async (req, res) => {
     });
 });
 
-const getProduct = asyncWrapper(async (req, res) => {
+const getProduct = asyncWrapper(async (req, res, next) => {
     const product = await Product.findById(req.params.id)
     if (!product) {
         return next ( AppError.create('Product not found', 404, httpStatus.FAIL));
@@ -84,7 +85,7 @@ const getProduct = asyncWrapper(async (req, res) => {
     });
 });
 
-const createProduct = asyncWrapper(async (req, res) => {
+const createProduct = asyncWrapper(async (req, res, next) => {
     const { title, price, image, state, brandID, categoryID, units_num } = req.body;
     if (!title || !price || !units_num) {
         return next ( AppError.create('title, price and units_num are required', 400, httpStatus.FAIL));
@@ -107,7 +108,7 @@ const createProduct = asyncWrapper(async (req, res) => {
     });
 });
 
-const updateProduct = asyncWrapper(async (req, res) => {
+const updateProduct = asyncWrapper(async (req, res, next) => {
     const productId = req.params.id;
     const product = await Product.findByIdAndUpdate(
         productId, 
@@ -125,7 +126,12 @@ const updateProduct = asyncWrapper(async (req, res) => {
     });
 });
 
-const deleteProduct = asyncWrapper(async (req, res) => { 
+const deleteProduct = asyncWrapper(async (req, res, next) => { 
+    // Check if any order contains this product
+    const existingOrder = await Order.findOne({ 'products.product': req.params.id });
+    if (existingOrder) {
+        return next(AppError.create('Cannot delete product: it exists in an order', 400, httpStatus.FAIL));
+    }
     const result = await Product.deleteOne({_id: req.params.id});
     if (result.deletedCount === 0) {
         return next ( AppError.create('Product not found', 404, httpStatus.FAIL));
