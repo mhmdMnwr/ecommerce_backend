@@ -38,7 +38,8 @@ app.use((error, req, res, next) => {
 
     //  Handle Mongoose Invalid ID (CastError)
     if (error.name === 'CastError') {
-        return res.status(400).json({
+        return 
+        res.status(400).json({
             status: 'fail',
             message: `Invalid ID format`,
             code: 400

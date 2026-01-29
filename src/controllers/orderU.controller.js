@@ -6,6 +6,9 @@ const Product = require('../models/product.model');
 const AppError = require('../constants/appErrors');
 const httpStatus = require('../constants/httpStatusText');
 const asyncWrapper = require('../middleware/asyncWrapper');
+const User = require('../models/user.model');
+const Settings = require('../models/settings.model');
+const {OrderStatus} = require('../constants/orderStatus');
 
 
 const updateOrderContentAdmin = asyncWrapper(async (req, res, next) => {
@@ -18,7 +21,7 @@ const updateOrderContentAdmin = asyncWrapper(async (req, res, next) => {
     }
 
     // Protection: Even admins shouldn't edit a cancelled order without re-opening it
-    if (order.status === 'cancelled') {
+    if (order.status === OrderStatus.CANCELLED) {
         return next(AppError.create('Cannot modify a cancelled order. Change status first.', 400, httpStatus.FAIL));
     }
 
@@ -57,12 +60,17 @@ const updateMyOrder = asyncWrapper(async (req, res, next) => {
     }
 
     // B. Verify State (YOUR LOGIC: Check state before calling the function)
-    if (order.status !== 'pending') {
+    if (order.status !== OrderStatus.PENDING) {
         return next(AppError.create(`Cannot edit order in ${order.status} status.`, 400, httpStatus.FAIL));
     }
 
     // C. Call helper with isAdmin = false (Safety switch: ignores prices in req.body)
     const { finalItems, totalAmount } = await validateAndCalculateOrder(items, false);
+
+    if(totalAmount < 5000){
+        return next(AppError.create('Minimum order amount is 5000', 400, httpStatus.FAIL));
+    }
+
 
     order.items = finalItems;
     order.totalAmount = totalAmount;
@@ -90,7 +98,7 @@ const cancelMyOrder = asyncWrapper(async (req, res, next) => {
 
     // 2. Status Constraint (Strict)
     // If it's already "processing", "shipped", or "delivered", the customer can't touch it.
-    if (order.status !== 'pending') {
+    if (order.status !== OrderStatus.PENDING) {
         return next(AppError.create(
             `Cannot cancel order. It is already ${order.status}. Please contact support.`, 
             400, 
@@ -99,7 +107,7 @@ const cancelMyOrder = asyncWrapper(async (req, res, next) => {
     }
 
     // 3. Update the state
-    order.status = 'cancelled';
+    order.status = OrderStatus.CANCELLED;
     order.updatedAt = Date.now();
     await order.save();
 
@@ -120,7 +128,7 @@ const updateOrderStatus = asyncWrapper(async (req, res, next) => {
     const oldStatus = order.status;
 
     // --- CASE A: DELIVERED (Money IN) ---
-    if (status === 'delivered' && oldStatus !== 'delivered') {
+    if (status === OrderStatus.DELIVERED && oldStatus !== OrderStatus.DELIVERED) {
         
         await User.findByIdAndUpdate(order.customerId, { 
             $inc: { totalSpent: order.totalAmount } 
@@ -138,7 +146,7 @@ const updateOrderStatus = asyncWrapper(async (req, res, next) => {
     }
 
     // --- CASE B: CANCELLED AFTER DELIVERY (Money OUT) ---
-    if (status === 'cancelled' && oldStatus === 'delivered') {
+    if (status === OrderStatus.CANCELLED && oldStatus === OrderStatus.DELIVERED) {
         // USE customerId HERE
         await User.findByIdAndUpdate(order.customerId, { 
             $inc: { totalSpent: -order.totalAmount } 

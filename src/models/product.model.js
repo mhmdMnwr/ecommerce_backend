@@ -49,7 +49,7 @@ const productSchema = new mongoose.Schema(
       }
     },
 
-    units_num: {
+    units: {
       type: Number,
       required: true,
       min: 1

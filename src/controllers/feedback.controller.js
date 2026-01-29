@@ -31,7 +31,7 @@ const getAllFeedbacks = asyncWrapper(async (req, res) => {
             pagination: {
                 total,
                 page,
-                pages: Math.ceil(total / limit)
+                totalPages: Math.ceil(total / limit)
             }
         }
     });
@@ -43,7 +43,7 @@ const createFeedback = asyncWrapper(async (req, res) => {
     
     // Check comment exists
     if (!comment) {
-        throw AppError.create('Comment is required', 400, httpStatus.FAIL);
+        return next ( AppError.create('Comment is required', 400, httpStatus.FAIL));
     }
 
         const username = req.currentUser.username;

@@ -63,10 +63,9 @@ const getAllProducts = asyncWrapper(async (req, res) => {
     res.json({
         status: httpStatus.SUCCESS,
         pagination: {
-            total,
             page,
             limit,
-            pages: Math.ceil(total / limit),
+            totalPages: Math.ceil(total / limit),
         },
         data:  {products} 
     });
@@ -75,7 +74,7 @@ const getAllProducts = asyncWrapper(async (req, res) => {
 const getProduct = asyncWrapper(async (req, res) => {
     const product = await Product.findById(req.params.id)
     if (!product) {
-        throw AppError.create('Product not found', 404, httpStatus.FAIL);
+        return next ( AppError.create('Product not found', 404, httpStatus.FAIL));
     }
     res.json({
         status: httpStatus.SUCCESS,
@@ -88,7 +87,7 @@ const getProduct = asyncWrapper(async (req, res) => {
 const createProduct = asyncWrapper(async (req, res) => {
     const { title, price, image, state, brandID, categoryID, units_num } = req.body;
     if (!title || !price || !units_num) {
-        throw AppError.create('title, price and units_num are required', 400, httpStatus.FAIL);
+        return next ( AppError.create('title, price and units_num are required', 400, httpStatus.FAIL));
     }
     const newProduct = new Product({
         title,
@@ -117,7 +116,7 @@ const updateProduct = asyncWrapper(async (req, res) => {
     );
 
     if (!product) {
-        throw AppError.create('Product not found', 404, httpStatus.FAIL);
+        return next ( AppError.create('Product not found', 404, httpStatus.FAIL));
     }
 
     res.json({
@@ -129,7 +128,7 @@ const updateProduct = asyncWrapper(async (req, res) => {
 const deleteProduct = asyncWrapper(async (req, res) => { 
     const result = await Product.deleteOne({_id: req.params.id});
     if (result.deletedCount === 0) {
-        throw AppError.create('Product not found', 404, httpStatus.FAIL);
+        return next ( AppError.create('Product not found', 404, httpStatus.FAIL));
     }
     res.json({
         status: httpStatus.SUCCESS,

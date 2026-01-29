@@ -34,7 +34,7 @@ const seedDB = async () => {
             products.push({
                 title: `Premium Product ${i}`,
                 price: Math.floor(Math.random() * 5000) + 100,
-                units_num: Math.floor(Math.random() * 100),
+                units: 2,
                 brand: brands[i % brands.length]._id,
                 category: categories[i % categories.length]._id,
                 state: 'available'
@@ -46,7 +46,7 @@ const seedDB = async () => {
             products.push({
                 title: `Generic Item ${i}`,
                 price: Math.floor(Math.random() * 1000) + 50,
-                units_num: Math.floor(Math.random() * 200),
+                units: Math.floor(Math.random() * 200),
                 brand: null, // As per your schema default
                 category: null,
                 state: 'available'

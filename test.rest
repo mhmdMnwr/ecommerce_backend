@@ -1,7 +1,0 @@
-
- 
-
-
-###get all users
-### --- CONFIGURATION ---
-

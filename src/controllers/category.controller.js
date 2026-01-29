@@ -21,7 +21,6 @@ const getAllCategories = asyncWrapper(async (req, res) => {
     res.json({
         status: httpStatus.SUCCESS,
         pagination: {
-                totalCategories,
                 page,
                 limit,
                 totalPages: Math.ceil(totalCategories / limit)
@@ -35,7 +34,7 @@ const getAllCategories = asyncWrapper(async (req, res) => {
 const getCategory = asyncWrapper(async (req, res) => {
     const category = await Category.findById(req.params.id);
     if (!category) {
-        throw AppError.create('Category not found', 404, httpStatus.FAIL);
+        return next ( AppError.create('Category not found', 404, httpStatus.FAIL));
     }
     res.json({
         status: httpStatus.SUCCESS,
@@ -48,7 +47,7 @@ const getCategory = asyncWrapper(async (req, res) => {
 const createCategory = asyncWrapper(async (req, res) => {
     const { title, image } = req.body;
     if (!title) {
-        throw AppError.create('Title is required', 400, httpStatus.FAIL);
+        return next ( AppError.create('Title is required', 400, httpStatus.FAIL));
     }
     const newCategory = new Category({
         title,
@@ -67,7 +66,7 @@ const updateCategory = asyncWrapper(async (req, res) => {
     const categoryId = req.params.id;
     const updatedCategory = await Category.updateOne({ _id: categoryId }, { $set: { ...req.body } });
     if (updatedCategory.matchedCount === 0) {
-        throw AppError.create('Category not found', 404, httpStatus.FAIL);
+        return next ( AppError.create('Category not found', 404, httpStatus.FAIL));
     }
     const category = await Category.findById(categoryId);
     res.json({
@@ -81,11 +80,11 @@ const Product = require('../models/product.model');
 const deleteCategory = asyncWrapper(async (req, res) => {
     const productsWithCategory = await Product.find({ category: req.params.id });
     if (productsWithCategory.length > 0) {
-        throw AppError.create('Cannot delete category with associated products', 400, httpStatus.FAIL);
+        return next ( AppError.create('Cannot delete category with associated products', 400, httpStatus.FAIL));
     }
     const result = await Category.deleteOne({ _id: req.params.id });
     if (result.deletedCount === 0) {
-        throw AppError.create('Category not found', 404, httpStatus.FAIL);
+        return next ( AppError.create('Category not found', 404, httpStatus.FAIL));
     }
     res.json({
         status: httpStatus.SUCCESS,

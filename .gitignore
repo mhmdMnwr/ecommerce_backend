@@ -9,3 +9,5 @@ test_brands_categories_^paths.rest
 .idea/
 test_orders_paths.rest
 test_products_paths.rest
+test.rest
+src/scripts

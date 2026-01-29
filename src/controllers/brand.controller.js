@@ -23,22 +23,18 @@ const getAllBrands = asyncWrapper(async (req, res) => {
     res.json({
         status: httpStatus.SUCCESS,
         pagination: {
-                totalBrands,
                 page,
                 limit,
                 totalPages: Math.ceil(totalBrands / limit)
             },
-        data: {
-            brands,
-            
-        }
+        data: {brands,}
     });
 });
 
 const getBrand = asyncWrapper(async (req, res) => {
     const brand = await Brand.findById(req.params.id);
     if (!brand) {
-        throw AppError.create('Brand not found', 404, httpStatus.FAIL);
+        return next ( AppError.create('Brand not found', 404, httpStatus.FAIL));
     }
     res.json({
         status: httpStatus.SUCCESS,
@@ -51,7 +47,7 @@ const getBrand = asyncWrapper(async (req, res) => {
 const createBrand = asyncWrapper(async (req, res) => {
     const { title, image } = req.body;
     if (!title) {
-        throw AppError.create('title is required', 400, httpStatus.FAIL);
+        return next ( AppError.create('title is required', 400, httpStatus.FAIL))
     }
     const newBrand = new Brand({
         title,
@@ -78,7 +74,7 @@ const updateBrand = asyncWrapper(async (req, res) => {
         }    );
 
     if (!brand) {
-        throw AppError.create('Brand not found', 404, httpStatus.FAIL);
+        return next ( AppError.create('Brand not found', 404, httpStatus.FAIL));
     }
 
     res.json({
@@ -93,12 +89,12 @@ const deleteBrand = asyncWrapper(async (req, res) => {
     const productsWithBrand = await Product.find({ brand: req.params.id });
 
     if (productsWithBrand.length > 0) {
-        throw AppError.create('Cannot delete brand with associated products', 400, httpStatus.FAIL);
+        return next ( AppError.create('Cannot delete brand with associated products', 400, httpStatus.FAIL));
     }
     const result = await Brand.deleteOne({ _id: req.params.id });
 
     if (result.deletedCount === 0) {
-        throw AppError.create('Brand not found', 404, httpStatus.FAIL);
+        return next ( AppError.create('Brand not found', 404, httpStatus.FAIL))
     }
     res.json({
         status: httpStatus.SUCCESS,

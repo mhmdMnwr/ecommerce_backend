@@ -13,7 +13,7 @@ const getAllUsers = asyncWrapper(async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     if (!role || ![Roles.CUSTOMER, Roles.MANAGER, Roles.ADMIN, Roles.SUPER_ADMIN].includes(role)) {
-        throw AppError.create('Valid role query parameter is required', 400, httpStatus.FAIL);
+        return next ( AppError.create('Valid role query parameter is required', 400, httpStatus.FAIL));
     }
     const filter = { role: role }; 
 
@@ -37,10 +37,9 @@ const getAllUsers = asyncWrapper(async (req, res) => {
 
     res.json({
         status: httpStatus.SUCCESS,
-        results: users.length,
         pagination: {
-            totalUsers,
-            currentPage: parseInt(page),
+            page,
+            limit,
             totalPages: Math.ceil(totalUsers / limit)
         },
         data:  {users} 
@@ -97,21 +96,21 @@ const login = asyncWrapper(async (req, res, next) => {
 const refreshToken = asyncWrapper(async (req, res) => {
     const { token } = req.body;
     if (!token) {
-        throw AppError.create('Token is required', 401, httpStatus.FAIL);
+        return next ( AppError.create('Token is required', 401, httpStatus.FAIL));
     }
     try {
         const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
         const user = await User.findById(decoded.id);
         if (!user) {
-            throw AppError.create('User not found', 404, httpStatus.FAIL);
+            return next ( AppError.create('User not found', 404, httpStatus.FAIL));
         }
         if(user.status !== 'active'){
-            throw AppError.create('User account is inactive', 403, httpStatus.FAIL);
+            return next ( AppError.create('User account is inactive', 403, httpStatus.FAIL));
         }
         const accessToken = generateAccessToken({ id: user._id, role: user.role });
         res.json({ status: httpStatus.SUCCESS, data: { accessToken } });
     } catch (err) {
-        throw AppError.create('Invalid refresh token', 401, httpStatus.FAIL);
+        return next ( AppError.create('Invalid refresh token', 401, httpStatus.FAIL));
     }
 });
 
@@ -164,25 +163,19 @@ const createManagerByAdmin = asyncWrapper(async (req, res, next) => {
 
 
 
-const toggleUserStatus = asyncWrapper(async (req, res) => {
+const toggleUserStatus = asyncWrapper(async (req, res, next) => {
     const { userId } = req.params;
 
     // 1. Find the user
     const user = await User.findById(userId);
 
     if (!user) {
-        return res.status(404).json({ 
-            status: httpStatus.FAIL, 
-            message: "User not found" 
-        });
+        return next(AppError.create('User not found', 404, httpStatus.FAIL));
     }
 
     // 2. Prevent the SuperAdmin from deactivating themselves by accident!
     if (userId === req.currentUser.id.toString()) {
-        return res.status(400).json({ 
-            status: httpStatus.FAIL, 
-            message: "You cannot deactivate your own admin account." 
-        });
+        return next(AppError.create("You cannot deactivate your own admin account.", 400, httpStatus.FAIL));
     }
 
     // 3. Flip the status

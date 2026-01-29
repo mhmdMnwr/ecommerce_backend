@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { RoleValues , Roles } = require('../constants/roles.js');
 const { UserStatus , StatusValues } = require('../constants/userStatus.js');
+const AppError = require('../constants/appErrors.js');
 
 const userSchema = new mongoose.Schema({
     username: {
@@ -46,7 +47,8 @@ userSchema.pre('save', async function () {
         const adminCount = await AdminModel.countDocuments({ role: Roles.ADMIN });
 
         if (adminCount > 0) {
-            throw new Error('Constraint Violation: Only one Admin account is allowed.');
+            
+            throw AppError.create('Constraint Violation: Only one Admin account is allowed.', 400, httpStatus.FAIL);
         }
     }
 

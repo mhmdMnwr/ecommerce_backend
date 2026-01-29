@@ -1,3 +1,5 @@
+const Product = require('../models/product.model');
+const ProductStatus = require('../constants/productStatus');
 /**
  * DRY Helper: Validates products and calculates totals
  * @param {Array} items - The items from req.body
@@ -12,11 +14,11 @@ const validateAndCalculateOrder = async (items, isAdmin = false) => {
     const finalItems = items.map(item => {
         const product = productMap[item.productId];
         
-        if (!product) throw new Error(`Product ${item.productId} not found`);
+        if (!product) throw  new Error(`Product ${item.productId} not found`);
 
         // --- CHECK THE STATE INSTEAD OF QUANTITY ---
-        if (product.state === 'not available') {
-            throw new Error(`Product "${product.title}" is currently out of stock/not available.`);
+        if (product.state === ProductStatus.UNAVAILABLE) {
+            throw new Error(`Product "${product.title}" is currently not available.`);
         }
 
         const price = (isAdmin && item.price !== undefined) ? item.price : product.price;
@@ -26,6 +28,7 @@ const validateAndCalculateOrder = async (items, isAdmin = false) => {
             productId: product._id,
             title: product.title,
             price: price,
+            units: product.units,
             quantity: item.quantity
         };
     });
