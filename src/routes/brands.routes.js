@@ -3,7 +3,7 @@ const brandController = require('../controllers/brand.controller');
 const router = express.Router();
 const verifyToken = require('../middleware/verifyToken');
 const allowedTo = require('../middleware/allowedTo');
-const { ROLES } = require('../config/permissions');
+const { Roles } = require('../constants/roles');
 
 
 
@@ -11,11 +11,11 @@ router.use(verifyToken);
 
 router.route('/')
     .get(brandController.getAllBrands)
-    .post(allowedTo(ROLES.ADMIN, ROLES.MANAGER), brandController.createBrand);
+    .post(allowedTo(Roles.ADMIN, Roles.MANAGER), brandController.createBrand);
 
 router.route('/:id')
     .get(brandController.getBrand)
-    .patch(allowedTo(ROLES.ADMIN, ROLES.MANAGER), brandController.updateBrand)
-    .delete(allowedTo(ROLES.ADMIN, ROLES.MANAGER), brandController.deleteBrand);
+    .patch(allowedTo(Roles.ADMIN, Roles.MANAGER), brandController.updateBrand)
+    .delete(allowedTo(Roles.ADMIN, Roles.MANAGER), brandController.deleteBrand);
 
 module.exports = router;

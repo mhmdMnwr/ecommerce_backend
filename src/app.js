@@ -10,7 +10,7 @@ const productRoutes = require('./routes/products.routes');
 const brandRoutes = require('./routes/brands.routes');
 const categoryRoutes = require('./routes/categories.routes');
 const feedbackRoutes = require('./routes/feedback.routes');
-const httpStatusText = require('./utils/httpStatusText');
+const httpStatusText = require('./constants/httpStatusText');
 const orderRoutes = require('./routes/orders.routes');
 
 app.use(cors());

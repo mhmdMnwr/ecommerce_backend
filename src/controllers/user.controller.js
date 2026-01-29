@@ -1,18 +1,18 @@
 const User = require('../models/user.model');
-const httpStatus = require('../utils/httpStatusText');
-const AppError = require('../utils/appErrors');
+const httpStatus = require('../constants/httpStatusText.js');
+const AppError = require('../constants/appErrors.js');
 const bcrypt = require('bcryptjs');
 const asyncWrapper = require('../middleware/asyncWrapper');
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateJWT');
 const jwt = require('jsonwebtoken');
-const { ROLES  } = require('../config/permissions.js');
+const { Roles  } = require('../constants/roles.js');
 
 
 const getAllUsers = asyncWrapper(async (req, res) => {
     const { limit = 10, page = 1, name, status , role } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    if (!role || ![ROLES.CUSTOMER, ROLES.MANAGER, ROLES.ADMIN, ROLES.SUPER_ADMIN].includes(role)) {
+    if (!role || ![Roles.CUSTOMER, Roles.MANAGER, Roles.ADMIN, Roles.SUPER_ADMIN].includes(role)) {
         throw AppError.create('Valid role query parameter is required', 400, httpStatus.FAIL);
     }
     const filter = { role: role }; 
@@ -136,7 +136,7 @@ const registerCustomer = asyncWrapper(async (req, res, next) => {
         password: hashedPassword,
         address,
         phone,
-        role: ROLES.CUSTOMER 
+        role: Roles.CUSTOMER 
     });
 
     await newUser.save();
@@ -152,7 +152,7 @@ const createManagerByAdmin = asyncWrapper(async (req, res, next) => {
     const newAdmin = new User({
         username: username,
         password: hashedPassword,
-        role:  ROLES.MANAGER,
+        role:  Roles.MANAGER,
         address: address ,
         phone: phone
     });

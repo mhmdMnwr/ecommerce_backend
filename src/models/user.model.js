@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const { ROLE_VALUES , ROLES } = require('../config/permissions.js');
+const { RoleValues , Roles } = require('../constants/roles.js');
+const { UserStatus , StatusValues } = require('../constants/userStatus.js');
 
 const userSchema = new mongoose.Schema({
     username: {
@@ -14,13 +15,13 @@ const userSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['active', 'inactive'],
-        default: 'active'
+        enum: StatusValues,
+        default: UserStatus.ACTIVE
     },
     role: {
         type: String,
-        enum: ROLE_VALUES,
-        default: ROLES.CUSTOMER
+        enum: RoleValues,
+        default: Roles.CUSTOMER
     },
     totalOrders: {
         type: Number,
@@ -40,9 +41,9 @@ const userSchema = new mongoose.Schema({
 
 userSchema.pre('save', async function () {
     // 1. Singleton Admin Check
-    if (this.role === ROLES.ADMIN && (this.isNew || this.isModified('role'))) {
+    if (this.role === Roles.ADMIN && (this.isNew || this.isModified('role'))) {
         const AdminModel = this.constructor; 
-        const adminCount = await AdminModel.countDocuments({ role: ROLES.ADMIN });
+        const adminCount = await AdminModel.countDocuments({ role: Roles.ADMIN });
 
         if (adminCount > 0) {
             throw new Error('Constraint Violation: Only one Admin account is allowed.');

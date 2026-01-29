@@ -2,7 +2,7 @@
 const Order = require('../models/order.model');
 const User = require('../models/user.model');
 const asyncWrapper = require('../middleware/asyncWrapper');
-const httpStatus = require('../utils/httpStatusText');
+const httpStatus = require('../constants/httpStatusText');
 
 const getTotalsWithGrowth = asyncWrapper(async (req, res) => {
     const now = new Date();

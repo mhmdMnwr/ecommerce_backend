@@ -1,6 +1,6 @@
 const Brand = require('../models/brand.model');
-const httpStatus = require('../utils/httpStatusText');
-const AppError = require('../utils/appErrors');
+const httpStatus = require('../constants/httpStatusText');
+const AppError = require('../constants/appErrors');
 const asyncWrapper = require('../middleware/asyncWrapper');
 
 const getAllBrands = asyncWrapper(async (req, res) => {

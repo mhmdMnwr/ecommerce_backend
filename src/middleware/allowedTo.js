@@ -1,9 +1,9 @@
 // src/middleware/allowedTo.js
-const AppError = require('../utils/appErrors');
-const httpStatus = require('../utils/httpStatusText');
+const AppError = require('../constants/appErrors');
+const httpStatus = require('../constants/httpStatusText');
 const User = require('../models/user.model');
 
-const allowedTo = (...roles) => {
+const allowedTo = (...Roles) => {
     return async (req, res, next) => {
         // 1. We already have the ID from verifyToken
         const userId = req.currentUser.id;
@@ -22,7 +22,7 @@ const allowedTo = (...roles) => {
         }
 
         // 4. Role Authorization
-        if (!roles.includes(user.role)) {
+        if (!Roles.includes(user.role)) {
             return next(AppError.create('You do not have permission', 403));
         }
 

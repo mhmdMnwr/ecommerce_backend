@@ -1,5 +1,6 @@
-const { min } = require('lodash');
+
 const mongoose = require('mongoose');
+const { StatusValues , ProductStatus } = require('../constants/productStatus');
 
 const productSchema = new mongoose.Schema(
   {
@@ -68,8 +69,8 @@ const productSchema = new mongoose.Schema(
 
     state: {
       type: String,
-      enum: ['available', 'unavailable'],
-      default: 'available'
+      enum: StatusValues,
+      default: ProductStatus.AVAILABLE
     }
   },
   { timestamps: true }

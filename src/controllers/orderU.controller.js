@@ -3,8 +3,8 @@
 const {validateAndCalculateOrder} = require('../utils/orderHelpers');
 const Order = require('../models/order.model');
 const Product = require('../models/product.model');
-const AppError = require('../utils/appErrors');
-const httpStatus = require('../utils/httpStatusText');
+const AppError = require('../constants/appErrors');
+const httpStatus = require('../constants/httpStatusText');
 const asyncWrapper = require('../middleware/asyncWrapper');
 
 

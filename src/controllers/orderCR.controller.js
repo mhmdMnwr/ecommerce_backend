@@ -1,7 +1,7 @@
-const httpStatus = require('../utils/httpStatusText');
+const httpStatus = require('../constants/httpStatusText');
 const Order = require('../models/order.model');
 const Product = require('../models/product.model');
-const AppError = require('../utils/appErrors');
+const AppError = require('../constants/appErrors');
 const asyncWrapper = require('../middleware/asyncWrapper'); 
 const {validateAndCalculateOrder} = require('../utils/orderHelpers');
 

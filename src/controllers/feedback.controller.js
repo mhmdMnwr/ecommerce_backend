@@ -1,8 +1,8 @@
-const httpStatus = require('../utils/httpStatusText');
+const httpStatus = require('../constants/httpStatusText');
 
 const Feedback = require('../models/feedback.model');
 const User = require('../models/user.model');
-const AppError = require('../utils/appErrors');
+const AppError = require('../constants/appErrors');
 const asyncWrapper = require('../middleware/asyncWrapper');
 
 // GET FEEDBACKS (Filtered by User)
