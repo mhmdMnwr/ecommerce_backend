@@ -1,0 +1,70 @@
+@baseUrl = http://localhost:4000
+@admin_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Nzg1NmM5MDM3OWU0OTc0MzIzOGVkMSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc2OTY5NTYwNywiZXhwIjoxNzY5Njk4OTA3fQ.2TS1CZFBuJjn8QIVsN9hkfju6Ua5H3pGffWoG618ZAs
+@customer_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Nzg2Mzc2MjdhMWYxM2ZmNGEzYWVhMCIsInJvbGUiOiJjdXN0b21lciIsImlhdCI6MTc2OTY2MDIzNywiZXhwIjoxNzY5NjYzNTM3fQ.rLTFesZGaaeREMjrI-eDdM-IeWmQCeDtErhDelX2tuI
+### 1. LOGIN AS SUPER ADMIN
+# Run this first to get the @admin_token
+POST {{baseUrl}}/users/login
+Content-Type: application/json
+
+{
+    "username": "super_admin_dz",
+    "password": "Admin@123456"
+}
+###  LOGIN AS customer
+# Run this first to get the @admin_token
+POST {{baseUrl}}/users/login
+Content-Type: application/json
+
+{
+    "username": "customer_test_02",
+    "password": "password123"
+}
+
+### 2. CREATE A MANAGER (ADMIN ONLY)
+# Test if Admin can create a Manager
+POST {{baseUrl}}/users/createManagerByAdmin
+Content-Type: application/json
+Authorization: Bearer {{admin_token}}
+
+{
+    "username": "manager_test_06",
+    "password": "ManagerPassword123"
+}
+
+### 3. REGISTER A CUSTOMER
+POST {{baseUrl}}/users/registerCustomer
+Content-Type: application/json
+
+{
+    "username": "customer_test_04",
+    "password": "password123",
+    "address": "Oran, Algeria",
+    "phone": "0550000000"
+}
+
+### 4. GET MY PROFILE (LEAN CHECK TEST)
+# Use this to verify the token works and fetches fresh status from DB
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{customer_token}}
+
+
+GET {{baseUrl}}/users
+Authorization: Bearer {{customer_token}}
+
+### 6. TOGGLE STATUS (ADMIN DEACTIVATING CUSTOMER)
+# Change 'ID_HERE' to the actual Customer ID from request #3
+PATCH {{baseUrl}}/users/69785e531d331c2da34543df/toggleStatus
+Authorization: Bearer {{admin_token}}
+
+### 7. LEAN CHECK: TEST DEACTIVATED USER
+# After running #6, try running #4 again.
+# It should now return 403 because of our Lean Check middleware.
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{customer_token}}
+
+### 8. CRACK TEST: ADMIN DEACTIVATING THEMSELVES
+# Replace with the Admin's own ID. Should return 400 Bad Request.
+PATCH {{baseUrl}}/users/697856c90379e49743238ed1/toggleStatus
+Authorization: Bearer {{admin_token}}
+
+

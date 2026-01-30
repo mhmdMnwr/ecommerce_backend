@@ -93,20 +93,20 @@ const getProduct = asyncWrapper(async (req, res, next) => {
 
 // @desc    Create new product
 const createProduct = asyncWrapper(async (req, res, next) => {
-    const { title, price, image, state, brandID, categoryID, units_num } = req.body;
+    const { title, price, image, state, brandID, categoryID, units } = req.body;
     
-    if (!title || !price || !units_num) {
-        return next(AppError.create('title, price and units_num are required', 400, httpStatus.FAIL));
+    if (!title || !price || !units) {
+        return next(AppError.create('title, price and units are required', 400, httpStatus.FAIL));
     }
 
     const newProduct = new Product({
-        title,
-        price,
-        image,
-        state,
+        title:title ,
+        price:price ,
+        image:image,
+        state:state,
         category: categoryID,
         brand: brandID,
-        units_num
+        units:units
     });
 
     await newProduct.save();
