@@ -69,25 +69,43 @@ const getTotalsWithGrowth = asyncWrapper(async (req, res) => {
 });
 
 // @desc    Get chart data for revenue, orders, or client registrations
+// @query   range: 'week' | 'month' | 'year' | 'all'
+// @query   type: 'revenue' | 'orders' | 'clients'
 const getAnalytics = asyncWrapper(async (req, res) => {
-    const { range, type } = req.query; 
+    const { range = 'week', type = 'revenue' } = req.query; 
     const now = new Date();
-    let startDate;
+    let startDate = null;
     let groupFormat;
 
-    if (range === 'year') {
-        startDate = new Date(now.getFullYear(), 0, 1);
-        groupFormat = "%Y-%m"; 
-    } else {
-        startDate = new Date();
-        startDate.setDate(now.getDate() - 7);
-        groupFormat = "%Y-%m-%d"; 
+    switch (range) {
+        case 'all':
+            startDate = null; // No date filter
+            groupFormat = "%Y"; // Group by year
+            break;
+        case 'year':
+            startDate = new Date(now.getFullYear(), 0, 1); // Jan 1st of current year
+            groupFormat = "%Y-%m"; // Group by month
+            break;
+        case 'month':
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1); // 1st of current month
+            groupFormat = "%Y-%m-%d"; // Group by day
+            break;
+        case 'week':
+        default:
+            startDate = new Date();
+            startDate.setDate(now.getDate() - 7); // Last 7 days
+            groupFormat = "%Y-%m-%d"; // Group by day
+            break;
     }
 
     let result;
     if (type === 'clients') {
+        const matchStage = startDate 
+            ? { $match: { role: Roles.CUSTOMER, createdAt: { $gte: startDate } } }
+            : { $match: { role: Roles.CUSTOMER } };
+        
         result = await User.aggregate([
-            { $match: { createdAt: { $gte: startDate } } },
+            matchStage,
             {
                 $group: {
                     _id: { $dateToString: { format: groupFormat, date: "$createdAt" } },
@@ -98,13 +116,12 @@ const getAnalytics = asyncWrapper(async (req, res) => {
         ]);
     } else {
         const valueExpression = type === 'revenue' ? "$totalAmount" : 1;
+        const matchStage = startDate 
+            ? { $match: { status: OrderStatus.DELIVERED, updatedAt: { $gte: startDate } } }
+            : { $match: { status: OrderStatus.DELIVERED } };
+        
         result = await Order.aggregate([
-            { 
-                $match: { 
-                    status: OrderStatus.DELIVERED, 
-                    updatedAt: { $gte: startDate } 
-                } 
-            },
+            matchStage,
             {
                 $group: {
                     _id: { $dateToString: { format: groupFormat, date: "$updatedAt" } },
@@ -117,8 +134,8 @@ const getAnalytics = asyncWrapper(async (req, res) => {
 
     res.status(200).json(
         new ApiResponse(200, "Analytics data fetched", result, {
-            range: range || 'week',
-            type: type || 'revenue'
+            range,
+            type
         })
     );
 });

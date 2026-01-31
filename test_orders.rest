@@ -1,0 +1,46 @@
+### Get All Orders (Admin/Manager)
+### Base URL - adjust port if needed
+@baseUrl = http://localhost:4000
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Nzg1NmM5MDM3OWU0OTc0MzIzOGVkMSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc2OTc5NDQ1OSwiZXhwIjoxNzY5Nzk3NzU5fQ.0r_mlvrComV7CJJaNURvPp7UO2nQiE_-G0Ja2BhTEqc
+
+### ============================================
+### GET ALL ORDERS - Basic
+### ============================================
+GET {{baseUrl}}/orders
+Authorization: Bearer {{token}}
+
+### ============================================
+### GET ALL ORDERS - With Pagination
+### ============================================
+GET {{baseUrl}}/orders?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### ============================================
+### GET ALL ORDERS - Filter by Customer Name
+### ============================================
+GET {{baseUrl}}/orders?name=john
+Authorization: Bearer {{token}}
+
+### ============================================
+### GET ALL ORDERS - Filter by Status
+### ============================================
+GET {{baseUrl}}/orders?status=pending
+Authorization: Bearer {{token}}
+
+### ============================================
+### GET ALL ORDERS - Filter by Date Range
+### ============================================
+GET {{baseUrl}}/orders?startDate=2026-01-01&endDate=2026-01-31
+Authorization: Bearer {{token}}
+
+### ============================================
+### GET ALL ORDERS - Combined Filters
+### ============================================
+GET {{baseUrl}}/orders?page=1&limit=20&status=pending&name=john&startDate=2026-01-01&endDate=2026-01-31
+Authorization: Bearer {{token}}
+
+### ============================================
+### GET MY ORDERS (Customer)
+### ============================================
+GET {{baseUrl}}/orders/my-orders?page=1&limit=10
+Authorization: Bearer {{token}}

@@ -109,7 +109,7 @@ const updateOrderStatus = asyncWrapper(async (req, res, next) => {
     // --- FINANCIAL ANALYTICS LOGIC ---
     // Transitioning to DELIVERED: Increment totals
     if (status === OrderStatus.DELIVERED && oldStatus !== OrderStatus.DELIVERED) {
-        await User.findByIdAndUpdate(order.customerId, { $inc: { totalSpent: order.totalAmount } });
+        await User.findByIdAndUpdate(order.customerId, { $inc: { totalSpent: order.totalAmount, totalOrders: 1 } });
 
         const productUpdates = order.items.map(item => 
             Product.findByIdAndUpdate(item.productId, {
@@ -123,8 +123,8 @@ const updateOrderStatus = asyncWrapper(async (req, res, next) => {
     }
 
     // Reversing DELIVERED (if cancelled/returned): Decrement totals
-    if (status === OrderStatus.CANCELLED && oldStatus === OrderStatus.DELIVERED) {
-        await User.findByIdAndUpdate(order.customerId, { $inc: { totalSpent: -order.totalAmount } });
+    if (status !== OrderStatus.DELIVERED && oldStatus === OrderStatus.DELIVERED) {
+        await User.findByIdAndUpdate(order.customerId, { $inc: { totalSpent: -order.totalAmount, totalOrders: -1 } });
 
         const productReversals = order.items.map(item => 
             Product.findByIdAndUpdate(item.productId, {

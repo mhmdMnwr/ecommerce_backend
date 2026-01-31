@@ -43,8 +43,6 @@ const getAllUsers = asyncWrapper(async (req, res, next) => {
 
 // @desc    User Login
 const login = asyncWrapper(async (req, res, next) => {
-    console.log('ApiResponse Type:', typeof ApiResponse);
-console.log('ApiResponse Content:', ApiResponse);
     const { username, password } = req.body;
 
     if (!username || !password) {
@@ -152,6 +150,64 @@ const createManagerByAdmin = asyncWrapper(async (req, res, next) => {
     );
 });
 
+// @desc    Customer: Update own profile
+const updateMe = asyncWrapper(async (req, res, next) => {
+    const userId = req.currentUser.id;
+    
+    // Prevent status update
+    const { status, role, password, ...allowedUpdates } = req.body;
+    
+    if (Object.keys(allowedUpdates).length === 0) {
+        return next(AppError.create('No valid fields to update', 400, httpStatus.FAIL));
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $set: allowedUpdates },
+        { new: true, runValidators: true }
+    ).select('-password -__v');
+
+    if (!updatedUser) {
+        return next(AppError.create('User not found', 404, httpStatus.FAIL));
+    }
+
+    res.status(200).json(
+        new ApiResponse(200, "Profile updated successfully", updatedUser)
+    );
+});
+
+// @desc    Admin: Update Manager by ID
+const updateManagerById = asyncWrapper(async (req, res, next) => {
+    const { managerId } = req.params;
+    
+    // Prevent status and role update
+    const { status, role, password, ...allowedUpdates } = req.body;
+    
+    if (Object.keys(allowedUpdates).length === 0) {
+        return next(AppError.create('No valid fields to update', 400, httpStatus.FAIL));
+    }
+
+    const manager = await User.findById(managerId);
+    
+    if (!manager) {
+        return next(AppError.create('Manager not found', 404, httpStatus.FAIL));
+    }
+
+    if (manager.role !== Roles.MANAGER) {
+        return next(AppError.create('User is not a manager', 400, httpStatus.FAIL));
+    }
+
+    const updatedManager = await User.findByIdAndUpdate(
+        managerId,
+        { $set: allowedUpdates },
+        { new: true, runValidators: true }
+    ).select('-password -__v');
+
+    res.status(200).json(
+        new ApiResponse(200, "Manager updated successfully", updatedManager)
+    );
+});
+
 // @desc    Toggle User Active/Inactive Status
 const toggleUserStatus = asyncWrapper(async (req, res, next) => {
     const { userId } = req.params;
@@ -181,5 +237,7 @@ module.exports = {
     login,
     refreshToken,
     getMe,
+    updateMe,
+    updateManagerById,
     toggleUserStatus
 };

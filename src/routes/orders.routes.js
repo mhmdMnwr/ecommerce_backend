@@ -18,15 +18,15 @@ router.route('/my-orders')
     .get(allowedTo(Roles.CUSTOMER), orderCRController.getMyOrders);
 
 // 3. Specific Order Actions (Changed :id to :orderId to match your controller)
-router.route('/:orderId/updateStatus')
+router.route('/updateStatus/:orderId')
     .patch(allowedTo(Roles.ADMIN, Roles.MANAGER), orderUController.updateOrderStatus);
 
-router.route('/:orderId/updateContent')
-    .patch(allowedTo(Roles.ADMIN), orderUController.updateOrderContentAdmin);
+router.route('/updateContent/:orderId')
+    .patch(allowedTo(Roles.ADMIN, Roles.MANAGER), orderUController.updateOrderContentAdmin);
 
-router.route('/:orderId/updateMyOrder')
+router.route('/updateMyOrder/:orderId')
     .patch(allowedTo(Roles.CUSTOMER), orderUController.updateMyOrder);
 
-router.route('/:orderId/cancelMyOrder')
+router.route('/cancelMyOrder/:orderId')
     .patch(allowedTo(Roles.CUSTOMER), orderUController.cancelMyOrder);
 module.exports = router;

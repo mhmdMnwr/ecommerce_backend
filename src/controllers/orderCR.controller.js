@@ -9,7 +9,7 @@ const { validateAndCalculateOrder } = require('../utils/orderHelpers');
 
 // @desc    Create new order with minimum amount validation
 const createOrder = asyncWrapper(async (req, res, next) => {
-    const { items } = req.body;
+    const { items , comment } = req.body;
     const user = req.currentUser;
     const settings = await Settings.findOne();
     const minRequired = settings ? settings.minOrderAmount : 50000;
@@ -31,7 +31,8 @@ const createOrder = asyncWrapper(async (req, res, next) => {
     const newOrder = new Order({
         customerId: user.id,
         items: finalItems,
-        totalAmount: totalAmount
+        totalAmount: totalAmount,
+        comment: comment || ''
     });
 
     await newOrder.save();
