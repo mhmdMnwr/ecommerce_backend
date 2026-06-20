@@ -1,9 +1,10 @@
 const Category = require('../models/category.model');
-const Product = require('../models/product.model'); // Standard: imports at the top
+const Product = require('../models/product.model');
 const httpStatus = require('../constants/httpStatusText');
 const AppError = require('../utils/appErrors');
 const asyncWrapper = require('../middleware/asyncWrapper');
 const ApiResponse = require('../utils/apiResponse');
+const { escapeRegex } = require('../utils/sanitize');
 
 // @desc    Get all categories with search and pagination
 const getAllCategories = asyncWrapper(async (req, res) => {
@@ -14,7 +15,7 @@ const getAllCategories = asyncWrapper(async (req, res) => {
 
     const filter = {};
     if (query.title) {
-        filter.title = { $regex: query.title, $options: 'i' }; 
+        filter.title = { $regex: escapeRegex(query.title), $options: 'i' }; 
     }
 
     const totalCategories = await Category.countDocuments(filter);

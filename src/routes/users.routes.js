@@ -5,14 +5,26 @@ const userController = require('../controllers/user.controller');
 const router = express.Router();
 const allowedTo = require('../middleware/allowedTo');
 const { Roles } = require('../constants/roles');
+const rateLimit = require('express-rate-limit');
+
+// Stricter rate limits for auth endpoints
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { status: 'FAIL', message: 'Too many login attempts, please try again later.', data: null }
+});
+
+const registerLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: { status: 'FAIL', message: 'Too many registration attempts, please try again later.', data: null }
+});
 
 router.route('/')
     .get(verifyToken , allowedTo(Roles.ADMIN , Roles.MANAGER), userController.getAllUsers);
 
- 
-
 router.route('/login')
-    .post(userController.login);
+    .post(loginLimiter, userController.login);
 
 router.route('/refresh-token')
     .post(userController.refreshToken);
@@ -22,7 +34,7 @@ router.route('/me')
     .patch(verifyToken, allowedTo(Roles.CUSTOMER), userController.updateMe);   
 
     router.route('/registerCustomer')
-    .post(userController.registerCustomer);
+    .post(registerLimiter, userController.registerCustomer);
 
     router.route('/createManagerByAdmin' )
     .post(verifyToken, allowedTo(Roles.ADMIN), userController.createManagerByAdmin);

@@ -6,6 +6,7 @@ const AppError = require('../utils/appErrors');
 const asyncWrapper = require('../middleware/asyncWrapper'); 
 const ApiResponse = require('../utils/apiResponse');
 const { validateAndCalculateOrder } = require('../utils/orderHelpers');
+const { escapeRegex } = require('../utils/sanitize');
 
 // @desc    Create new order with minimum amount validation
 const createOrder = asyncWrapper(async (req, res, next) => {
@@ -52,7 +53,7 @@ const getAllOrders = asyncWrapper(async (req, res) => {
     // 1. Filter by Customer Name (Sub-query)
     if (name) {
         const users = await User.find({ 
-            username: { $regex: name, $options: 'i' } 
+            username: { $regex: escapeRegex(name), $options: 'i' } 
         }).select('_id');
         filter.customerId = { $in: users.map(u => u._id) };
     }
@@ -70,11 +71,25 @@ const getAllOrders = asyncWrapper(async (req, res) => {
     const [orders, total] = await Promise.all([
         Order.find(filter)
             .populate('customerId', 'username') 
+            .populate('items.productId', 'title image')
             .sort({ createdAt: -1 }) 
             .limit(parseInt(limit))
             .skip(skip),
         Order.countDocuments(filter)
     ]);
+
+    const formattedOrders = orders.map(order => {
+        const orderObj = order.toObject();
+        orderObj.items = orderObj.items.map(item => {
+            if (item.productId && typeof item.productId === 'object') {
+                item.title = item.title || item.productId.title || '';
+                item.image = item.image || item.productId.image || '';
+                item.productId = item.productId._id;
+            }
+            return item;
+        });
+        return orderObj;
+    });
 
     const pagination = {
         page: parseInt(page),
@@ -84,7 +99,7 @@ const getAllOrders = asyncWrapper(async (req, res) => {
     };
 
     res.status(200).json(
-        new ApiResponse(200, "Orders fetched successfully", orders, pagination)
+        new ApiResponse(200, "Orders fetched successfully", formattedOrders, pagination)
     );
 });
 
@@ -96,11 +111,25 @@ const getMyOrders = asyncWrapper(async (req, res) => {
 
     const [orders, total] = await Promise.all([
         Order.find({ customerId: userId })
+            .populate('items.productId', 'title image')
             .sort({ createdAt: -1 })
             .limit(parseInt(limit))
             .skip(skip),
         Order.countDocuments({ customerId: userId })
     ]);
+
+    const formattedOrders = orders.map(order => {
+        const orderObj = order.toObject();
+        orderObj.items = orderObj.items.map(item => {
+            if (item.productId && typeof item.productId === 'object') {
+                item.title = item.title || item.productId.title || '';
+                item.image = item.image || item.productId.image || '';
+                item.productId = item.productId._id;
+            }
+            return item;
+        });
+        return orderObj;
+    });
 
     const pagination = {
         page: parseInt(page),
@@ -110,7 +139,7 @@ const getMyOrders = asyncWrapper(async (req, res) => {
     };
 
     res.status(200).json(
-        new ApiResponse(200, "Your orders fetched successfully", orders, pagination)
+        new ApiResponse(200, "Your orders fetched successfully", formattedOrders, pagination)
     );
 });
 

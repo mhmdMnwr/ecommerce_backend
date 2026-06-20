@@ -1,9 +1,10 @@
 const Brand = require('../models/brand.model');
-const Product = require('../models/product.model'); // Moved to top for clean imports
+const Product = require('../models/product.model');
 const httpStatus = require('../constants/httpStatusText');
 const AppError = require('../utils/appErrors');
 const asyncWrapper = require('../middleware/asyncWrapper');
 const ApiResponse = require('../utils/apiResponse');
+const { escapeRegex } = require('../utils/sanitize');
 
 // @desc    Get all brands with filtering and pagination
 const getAllBrands = asyncWrapper(async (req, res) => {
@@ -14,7 +15,7 @@ const getAllBrands = asyncWrapper(async (req, res) => {
 
     const filter = {};
     if (query.title) {
-        filter.title = { $regex: query.title, $options: 'i' }; 
+        filter.title = { $regex: escapeRegex(query.title), $options: 'i' }; 
     }
 
     const totalBrands = await Brand.countDocuments(filter);

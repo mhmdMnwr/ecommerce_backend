@@ -22,6 +22,8 @@ const orderSchema = new mongoose.Schema({
         price: { type: Number, 
             required: true, 
             min: 0 },
+        title: { type: String, default: '' },
+        image: { type: String, default: '' },
     }],
     comment: { type: String, 
         default: '' },
@@ -31,6 +33,7 @@ const orderSchema = new mongoose.Schema({
     status: { type: String, 
         enum: StatusValues , 
         default: OrderStatus.PENDING },
+    deliveredAt: { type: Date, default: null },
 
 }, { timestamps: true });
 

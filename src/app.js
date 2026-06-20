@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const app = express();
 const mongoose = require('mongoose');
 const url = process.env.MONGO_URL;
@@ -14,11 +15,48 @@ const httpStatusText = require('./constants/httpStatusText');
 const orderRoutes = require('./routes/orders.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
+const notificationRoutes = require('./routes/notifications.routes');
 const {globalErrorHandler , undefinedRouteHandler} = require('./middleware/globalMiddleware');
 const connectDB = require('./config/db');
 
+// ── Security Middleware ─────────────────────────────
+// Rate limiting: max 100 requests per 15 minutes per IP
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        status: httpStatusText.FAIL,
+        message: 'Too many requests, please try again later.',
+        data: null
+    }
+});
+
+// Custom NoSQL Injection Sanitizer (Compatible with Express 5 getter req.query)
+const sanitizeObject = (obj) => {
+    if (obj instanceof Object) {
+        for (const key in obj) {
+            if (/^\$|\./.test(key)) {
+                delete obj[key];
+            } else if (typeof obj[key] === 'object') {
+                sanitizeObject(obj[key]);
+            }
+        }
+    }
+};
+
+const sanitizeMiddleware = (req, res, next) => {
+    ['body', 'params', 'query'].forEach((k) => {
+        if (req[k]) sanitizeObject(req[k]);
+    });
+    next();
+};
+
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10kb' }));
+app.use(limiter);
+app.use(sanitizeMiddleware);
 
 app.use('/users', userRoutes);
 app.use('/products', productRoutes);
@@ -27,7 +65,8 @@ app.use('/categories', categoryRoutes);
 app.use('/feedbacks', feedbackRoutes);
 app.use('/orders', orderRoutes);
 app.use('/settings' , settingsRoutes);
-app.use('/dashboard' , dashboardRoutes)
+app.use('/dashboard' , dashboardRoutes);
+app.use('/notifications', notificationRoutes);
 
 
 // Catch-all for undefined routes
@@ -46,4 +85,3 @@ app.use(globalErrorHandler);
         console.log("Cannot start the server", err);
     }
  })
-

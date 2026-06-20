@@ -7,6 +7,7 @@ const { generateAccessToken, generateRefreshToken } = require('../utils/generate
 const jwt = require('jsonwebtoken');
 const { Roles } = require('../constants/roles.js');
 const ApiResponse = require('../utils/apiResponse');
+const { escapeRegex } = require('../utils/sanitize');
 
 // @desc    Get all users filtered by role/name (Admin/SuperAdmin)
 const getAllUsers = asyncWrapper(async (req, res, next) => {
@@ -18,7 +19,7 @@ const getAllUsers = asyncWrapper(async (req, res, next) => {
     }
     
     const filter = { role: role };
-    if (name) filter.username = { $regex: name, $options: 'i' };
+    if (name) filter.username = { $regex: escapeRegex(name), $options: 'i' };
     if (status) filter.status = status;
 
     const users = await User.find(filter)

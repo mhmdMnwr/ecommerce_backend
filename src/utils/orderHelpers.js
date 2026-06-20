@@ -27,6 +27,7 @@ const validateAndCalculateOrder = async (items, isAdmin = false) => {
         return {
             productId: product._id,
             title: product.title,
+            image: product.image || '',
             price: price,
             units: product.units,
             quantity: item.quantity

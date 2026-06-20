@@ -8,6 +8,7 @@ const AppError = require('../utils/appErrors');
 const asyncWrapper = require('../middleware/asyncWrapper');
 const ApiResponse = require('../utils/apiResponse');
 const { validateAndCalculateOrder } = require('../utils/orderHelpers');
+const { createNotification } = require('../utils/notificationHelper');
 
 // @desc    Admin: Update order items and prices
 const updateOrderContentAdmin = asyncWrapper(async (req, res, next) => {
@@ -31,6 +32,14 @@ const updateOrderContentAdmin = asyncWrapper(async (req, res, next) => {
     order.items = finalItems;
     order.totalAmount = totalAmount;
     await order.save();
+
+    // Notify customer about admin update
+    await createNotification(order.customerId, {
+        title: 'Order Updated',
+        message: `Your order has been updated by the admin. New total: ${totalAmount} DZD.`,
+        type: 'order_update',
+        orderId: order._id
+    });
 
     res.status(200).json(
         new ApiResponse(200, 'Order content updated by admin', order)
@@ -138,7 +147,21 @@ const updateOrderStatus = asyncWrapper(async (req, res, next) => {
     }
 
     order.status = status;
+    // Stamp delivery date when order is marked as Delivered.
+    if (status === OrderStatus.DELIVERED && oldStatus !== OrderStatus.DELIVERED) {
+        order.deliveredAt = new Date();
+    } else if (status !== OrderStatus.DELIVERED && oldStatus === OrderStatus.DELIVERED) {
+        order.deliveredAt = null;
+    }
     await order.save();
+
+    // Notify customer about status change
+    await createNotification(order.customerId, {
+        title: 'Order Status Updated',
+        message: `Your order status has changed from ${oldStatus} to ${status}.`,
+        type: 'order_status',
+        orderId: order._id
+    });
 
     res.status(200).json(
         new ApiResponse(200, `Order status updated to ${status}`, order)
