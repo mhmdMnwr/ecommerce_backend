@@ -39,7 +39,7 @@ const getCurrentMinOrderAmount = asyncWrapper(async (req, res) => {
 
     res.status(200).json(
         new ApiResponse(200, "Settings fetched successfully", {
-            minOrderAmount: settings.minOrderAmount
+            minOrderAmount: parseFloat(settings.minOrderAmount.toFixed(2))
         })
     );
 });

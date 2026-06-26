@@ -21,7 +21,7 @@ const validateAndCalculateOrder = async (items, isAdmin = false) => {
             throw new Error(`Product "${product.title}" is currently not available.`);
         }
 
-        const price = (isAdmin && item.price !== undefined) ? item.price : product.price;
+        const price = parseFloat(((isAdmin && item.price !== undefined) ? item.price : product.price).toFixed(2));
         calculatedTotal += price * item.quantity;
         
         return {

@@ -73,7 +73,16 @@ const productSchema = new mongoose.Schema(
       default: ProductStatus.AVAILABLE
     }
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    toJSON: {
+      transform(doc, ret) {
+        if (ret.price != null) ret.price = parseFloat(ret.price.toFixed(2));
+        if (ret.totalRevenue != null) ret.totalRevenue = parseFloat(ret.totalRevenue.toFixed(2));
+        return ret;
+      }
+    }
+  }
 );
 
 module.exports = mongoose.model('Product', productSchema);

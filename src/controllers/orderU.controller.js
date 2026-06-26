@@ -35,8 +35,11 @@ const updateOrderContentAdmin = asyncWrapper(async (req, res, next) => {
 
     // Notify customer about admin update
     await createNotification(order.customerId, {
-        title: 'Order Updated',
-        message: `Your order has been updated by the admin. New total: ${totalAmount} DZD.`,
+        title: 'notification_title_order_update',
+        message: JSON.stringify({
+            key: 'notification_message_order_update',
+            args: { totalAmount }
+        }),
         type: 'order_update',
         orderId: order._id
     });
@@ -49,7 +52,7 @@ const updateOrderContentAdmin = asyncWrapper(async (req, res, next) => {
 // @desc    Customer: Update own pending order
 const updateMyOrder = asyncWrapper(async (req, res, next) => {
     const { orderId } = req.params;
-    const { items } = req.body;
+    const { items, comment } = req.body;
     const userId = req.currentUser.id;
     
     const settings = await Settings.findOne();
@@ -69,11 +72,16 @@ const updateMyOrder = asyncWrapper(async (req, res, next) => {
     const { finalItems, totalAmount } = await validateAndCalculateOrder(items, false);
 
     if (totalAmount < minRequired) {
-        return next(AppError.create(`Minimum order amount is ${minRequired} DZD`, 400, httpStatus.FAIL));
+        return next(AppError.create(`Minimum order amount is ${minRequired.toFixed(2)} DZD`, 400, httpStatus.FAIL));
     }
 
     order.items = finalItems;
     order.totalAmount = totalAmount;
+    console.log("UPDATE MY ORDER REQ BODY COMMENT:", comment);
+    if (comment !== undefined) {
+        order.comment = comment;
+    }
+    console.log("ORDER COMMENT BEFORE SAVE:", order.comment);
     await order.save();
 
     res.status(200).json(
@@ -157,8 +165,11 @@ const updateOrderStatus = asyncWrapper(async (req, res, next) => {
 
     // Notify customer about status change
     await createNotification(order.customerId, {
-        title: 'Order Status Updated',
-        message: `Your order status has changed from ${oldStatus} to ${status}.`,
+        title: 'notification_title_order_status',
+        message: JSON.stringify({
+            key: 'notification_message_order_status',
+            args: { oldStatus, status }
+        }),
         type: 'order_status',
         orderId: order._id
     });

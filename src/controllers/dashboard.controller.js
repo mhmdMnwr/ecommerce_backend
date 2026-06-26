@@ -50,7 +50,7 @@ const getTotalsWithGrowth = asyncWrapper(async (req, res) => {
 
     const dashboardData = {
         revenue: {
-            total: total.totalRev,
+            total: parseFloat(total.totalRev.toFixed(2)),
             growth: calcGrowth(curr.rev, prev.rev)
         },
         orders: {
@@ -212,7 +212,7 @@ const getTopClients = asyncWrapper(async (req, res) => {
 
     const formattedClients = clients.map(user => ({
         name: user.username,
-        value: user[sortBy]
+        value: parseFloat(user[sortBy].toFixed(2))
     }));
 
     res.status(200).json(

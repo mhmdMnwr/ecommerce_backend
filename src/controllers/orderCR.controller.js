@@ -23,7 +23,7 @@ const createOrder = asyncWrapper(async (req, res, next) => {
     
     if (totalAmount < minRequired) {
         return next(AppError.create(
-            `Order total must be at least ${minRequired} DZD. Your current total is ${totalAmount} DZD.`,
+            `Order total must be at least ${minRequired.toFixed(2)} DZD. Your current total is ${totalAmount.toFixed(2)} DZD.`,
             400,
             httpStatus.FAIL
         ));

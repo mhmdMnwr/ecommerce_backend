@@ -12,7 +12,7 @@ const getAllFeedbacks = asyncWrapper(async (req, res) => {
     const skip = (page - 1) * limit;
 
     const feedbacks = await Feedback.find({}, { "__v": false })
-        .sort({ date: -1 })
+        .sort({ createdAt: -1 })
         .populate('customer', 'username')
         .limit(limit)
         .skip(skip);

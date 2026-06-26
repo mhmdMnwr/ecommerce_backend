@@ -35,7 +35,33 @@ const orderSchema = new mongoose.Schema({
         default: OrderStatus.PENDING },
     deliveredAt: { type: Date, default: null },
 
-}, { timestamps: true });
+}, { 
+    timestamps: true,
+    toJSON: {
+        transform(doc, ret) {
+            if (ret.totalAmount != null) ret.totalAmount = parseFloat(ret.totalAmount.toFixed(2));
+            if (ret.items && Array.isArray(ret.items)) {
+                ret.items = ret.items.map(item => {
+                    if (item.price != null) item.price = parseFloat(item.price.toFixed(2));
+                    return item;
+                });
+            }
+            return ret;
+        }
+    },
+    toObject: {
+        transform(doc, ret) {
+            if (ret.totalAmount != null) ret.totalAmount = parseFloat(ret.totalAmount.toFixed(2));
+            if (ret.items && Array.isArray(ret.items)) {
+                ret.items = ret.items.map(item => {
+                    if (item.price != null) item.price = parseFloat(item.price.toFixed(2));
+                    return item;
+                });
+            }
+            return ret;
+        }
+    }
+});
 
 
 

@@ -38,7 +38,15 @@ const userSchema = new mongoose.Schema({
     latitude: { type: Number, default: null },
     longitude: { type: Number, default: null },
 
-}, { timestamps: true });
+}, { 
+    timestamps: true,
+    toJSON: {
+        transform(doc, ret) {
+            if (ret.totalSpent != null) ret.totalSpent = parseFloat(ret.totalSpent.toFixed(2));
+            return ret;
+        }
+    }
+});
 
 
 

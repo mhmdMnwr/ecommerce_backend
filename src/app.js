@@ -18,6 +18,7 @@ const dashboardRoutes = require('./routes/dashboard.routes');
 const notificationRoutes = require('./routes/notifications.routes');
 const {globalErrorHandler , undefinedRouteHandler} = require('./middleware/globalMiddleware');
 const connectDB = require('./config/db');
+const priceFormatterMiddleware = require('./utils/priceFormatter');
 
 // ── Security Middleware ─────────────────────────────
 // Rate limiting: max 100 requests per 15 minutes per IP
@@ -57,6 +58,7 @@ app.use(cors());
 app.use(express.json({ limit: '10kb' }));
 app.use(limiter);
 app.use(sanitizeMiddleware);
+app.use(priceFormatterMiddleware);
 
 app.use('/users', userRoutes);
 app.use('/products', productRoutes);

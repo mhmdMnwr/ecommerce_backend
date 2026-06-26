@@ -7,7 +7,7 @@ const { Roles } = require('../constants/roles');
 
 
 
-router.use(verifyToken , allowedTo(Roles.ADMIN))
+router.use(verifyToken, allowedTo(Roles.ADMIN))
 
 router.route('/updateAmount').patch(settingsController.updateMinOrderAmount);
 router.route('/getCurrentAmount').get(settingsController.getCurrentMinOrderAmount);
