@@ -5,7 +5,7 @@ const generateAccessToken = (payload) => {
 }
 
 const generateRefreshToken = (payload) => {
-    return jwt.sign(payload, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET, { expiresIn: '7d' });
+    return jwt.sign(payload, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET, { expiresIn: '3d' });
 }
 
 module.exports = {

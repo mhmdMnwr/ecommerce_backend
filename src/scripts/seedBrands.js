@@ -3,7 +3,7 @@ const Brand = require('../models/brand.model');
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 
 // Array of brand name prefixes and suffixes to generate unique names
-const prefixes = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Omega', 'Prime', 'Ultra', 'Super', 'Mega', 'Neo', 
+const prefixes = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Omega', 'Prime', 'Ultra', 'Super', 'Mega', 'Neo',
     'Pro', 'Elite', 'Royal', 'Golden', 'Silver', 'Diamond', 'Crystal', 'Star', 'Sun', 'Moon',
     'Tech', 'Smart', 'Eco', 'Bio', 'Vita', 'Aero', 'Hydro', 'Electro', 'Dyna', 'Turbo'];
 
@@ -19,13 +19,13 @@ const categories = ['Electronics', 'Fashion', 'Food', 'Sports', 'Home', 'Beauty'
  */
 const generateBrands = (count) => {
     const brands = new Set();
-    
+
     while (brands.size < count) {
         const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
         const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
         const category = categories[Math.floor(Math.random() * categories.length)];
         const randomNum = Math.floor(Math.random() * 1000);
-        
+
         // Create different name patterns
         const patterns = [
             `${prefix} ${suffix}`,
@@ -35,11 +35,11 @@ const generateBrands = (count) => {
             `${prefix}${randomNum}`,
             `${category}${suffix}`,
         ];
-        
+
         const brandName = patterns[Math.floor(Math.random() * patterns.length)];
         brands.add(brandName);
     }
-    
+
     return Array.from(brands).map((title, index) => ({
         title,
         image: `brand_${index + 1}.png`
@@ -53,11 +53,11 @@ const seedBrands = async () => {
 
         // Generate 200 unique brands
         const brandsData = generateBrands(200);
-        
+
         // Insert brands in batches to handle potential duplicates
         let insertedCount = 0;
         const batchSize = 50;
-        
+
         for (let i = 0; i < brandsData.length; i += batchSize) {
             const batch = brandsData.slice(i, i + batchSize);
             try {
