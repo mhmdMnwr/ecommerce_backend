@@ -37,6 +37,7 @@ const userSchema = new mongoose.Schema({
     phone: { type: String, default: '' },
     latitude: { type: Number, default: null },
     longitude: { type: Number, default: null },
+    tokenVersion: { type: Number, default: 0 },
 
 }, { 
     timestamps: true,

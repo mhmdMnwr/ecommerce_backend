@@ -8,15 +8,21 @@ const AppError = require('../utils/appErrors');
 const asyncWrapper = require('../middleware/asyncWrapper');
 const ApiResponse = require('../utils/apiResponse');
 const { escapeRegex } = require('../utils/sanitize');
+const { safePaginationLimit } = require('../utils/validators');
 
 // @desc    Get all products with filtering, sorting, and pagination
 const getAllProducts = asyncWrapper(async (req, res) => {
     const query = req.query || {};
-    const limit = parseInt(query.limit) || 10;
+    const limit = safePaginationLimit(query.limit);
     const page = parseInt(query.page) || 1;
     const skip = (page - 1) * limit;
 
     const filter = {};
+
+    // 0. Customers only see available products
+    if (req.currentUser.role === 'customer') {
+        filter.state = 'available';
+    }
 
     // 1. Text Search
     if (query.title) {
@@ -99,6 +105,10 @@ const getProduct = asyncWrapper(async (req, res, next) => {
         return next(AppError.create('Product not found', 404, httpStatus.FAIL));
     }
 
+    if (req.currentUser.role === 'customer' && product.state !== 'available') {
+        return next(AppError.create('Product is currently unavailable', 403, httpStatus.FAIL));
+    }
+
     res.status(200).json(
         new ApiResponse(200, "Product details fetched", product)
     );
@@ -131,9 +141,25 @@ const createProduct = asyncWrapper(async (req, res, next) => {
 
 // @desc    Update product
 const updateProduct = asyncWrapper(async (req, res, next) => {
+    // V3: Whitelist allowed fields to prevent mass assignment
+    const ALLOWED_FIELDS = ['title', 'price', 'image', 'state', 'category', 'brand', 'units'];
+    const updates = {};
+    for (const field of ALLOWED_FIELDS) {
+        if (req.body[field] !== undefined) {
+            updates[field] = req.body[field];
+        }
+    }
+    // Also accept brandID/categoryID aliases from frontend
+    if (req.body.brandID !== undefined) updates.brand = req.body.brandID;
+    if (req.body.categoryID !== undefined) updates.category = req.body.categoryID;
+
+    if (Object.keys(updates).length === 0) {
+        return next(AppError.create('No valid fields to update', 400, httpStatus.FAIL));
+    }
+
     const product = await Product.findByIdAndUpdate(
         req.params.id,
-        { $set: req.body },
+        { $set: updates },
         { new: true, runValidators: true }
     );
 
@@ -168,8 +194,9 @@ const deleteProduct = asyncWrapper(async (req, res, next) => {
 
 const getNewProducts = asyncWrapper(async (req, res, next) => {
     const query = req.query || {};
-    const limit = parseInt(query.limit) || 10;
-    const products = await Product.find()
+    const limit = safePaginationLimit(query.limit);
+    const filter = req.currentUser.role === 'customer' ? { state: 'available' } : {};
+    const products = await Product.find(filter)
         .populate('brand', 'title image')
         .populate('category', 'title image')
         .sort({ createdAt: -1 })
@@ -181,8 +208,9 @@ const getNewProducts = asyncWrapper(async (req, res, next) => {
 
 const getTopSellingProducts = asyncWrapper(async (req, res, next) => {
     const query = req.query || {};
-    const limit = parseInt(query.limit) || 10;
-    const products = await Product.find()
+    const limit = safePaginationLimit(query.limit);
+    const filter = req.currentUser.role === 'customer' ? { state: 'available' } : {};
+    const products = await Product.find(filter)
         .populate('brand', 'title image')
         .populate('category', 'title image')
         .sort({ totalSold: -1 })

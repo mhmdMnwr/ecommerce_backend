@@ -1,5 +1,7 @@
 const Product = require('../models/product.model');
-const ProductStatus = require('../constants/productStatus');
+const { ProductStatus } = require('../constants/productStatus');
+const AppError = require('./appErrors');
+const httpStatus = require('../constants/httpStatusText');
 /**
  * DRY Helper: Validates products and calculates totals
  * @param {Array} items - The items from req.body
@@ -14,11 +16,11 @@ const validateAndCalculateOrder = async (items, isAdmin = false) => {
     const finalItems = items.map(item => {
         const product = productMap[item.productId];
         
-        if (!product) throw  new Error(`Product ${item.productId} not found`);
+        if (!product) throw AppError.create(`Product ${item.productId} not found`, 404, httpStatus.FAIL);
 
         // --- CHECK THE STATE INSTEAD OF QUANTITY ---
-        if (product.state === ProductStatus.UNAVAILABLE) {
-            throw new Error(`Product "${product.title}" is currently not available.`);
+        if (!isAdmin && product.state === ProductStatus.UNAVAILABLE) {
+            throw AppError.create(`Product "${product.title}" is currently not available.`, 400, httpStatus.FAIL);
         }
 
         const price = parseFloat(((isAdmin && item.price !== undefined) ? item.price : product.price).toFixed(2));

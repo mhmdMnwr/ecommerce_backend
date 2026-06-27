@@ -3,7 +3,7 @@ const Product = require('../models/product.model');
 const User = require('../models/user.model');
 const Settings = require('../models/settings.model');
 const httpStatus = require('../constants/httpStatusText');
-const { OrderStatus } = require('../constants/orderStatus');
+const { OrderStatus, StatusValues } = require('../constants/orderStatus');
 const AppError = require('../utils/appErrors');
 const asyncWrapper = require('../middleware/asyncWrapper');
 const ApiResponse = require('../utils/apiResponse');
@@ -77,11 +77,9 @@ const updateMyOrder = asyncWrapper(async (req, res, next) => {
 
     order.items = finalItems;
     order.totalAmount = totalAmount;
-    console.log("UPDATE MY ORDER REQ BODY COMMENT:", comment);
     if (comment !== undefined) {
         order.comment = comment;
     }
-    console.log("ORDER COMMENT BEFORE SAVE:", order.comment);
     await order.save();
 
     res.status(200).json(
@@ -118,10 +116,19 @@ const updateOrderStatus = asyncWrapper(async (req, res, next) => {
     const { orderId } = req.params;
     const { status } = req.body;
 
+    // V8: Validate status against allowed enum values
+    if (!status || !StatusValues.includes(status)) {
+        return next(AppError.create(`Invalid status. Must be one of: ${StatusValues.join(', ')}`, 400, httpStatus.FAIL));
+    }
+
     const order = await Order.findById(orderId);
     if (!order) return next(AppError.create('Order not found', 404, httpStatus.FAIL));
 
     const oldStatus = order.status;
+
+    if (oldStatus === OrderStatus.CANCELLED && status !== OrderStatus.CANCELLED && !req.body.confirmRestore) {
+        return next(AppError.create('Order was cancelled by the user. Are you sure you want to restore it?', 400, 'CONFIRM_RESTORE'));
+    }
 
     // --- FINANCIAL ANALYTICS LOGIC ---
     // Transitioning to DELIVERED: Increment totals

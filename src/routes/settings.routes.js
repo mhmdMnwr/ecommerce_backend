@@ -7,9 +7,13 @@ const { Roles } = require('../constants/roles');
 
 
 
-router.use(verifyToken, allowedTo(Roles.ADMIN))
+// Public or Customer-accessible routes
+router.route('/').get(verifyToken, settingsController.getSettings);
+router.route('/getCurrentAmount').get(verifyToken, settingsController.getCurrentMinOrderAmount);
 
+// Admin-only routes
+router.use(verifyToken, allowedTo(Roles.ADMIN));
 router.route('/updateAmount').patch(settingsController.updateMinOrderAmount);
-router.route('/getCurrentAmount').get(settingsController.getCurrentMinOrderAmount);
+router.route('/updateShopInfo').patch(settingsController.updateShopInfo);
 
 module.exports = router;

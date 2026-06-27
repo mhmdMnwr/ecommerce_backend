@@ -49,9 +49,13 @@ const globalErrorHandler = (error, req, res, next) => {
 };
 
 const undefinedRouteHandler =(req, res) => {
+  // V12: Sanitize reflected URL to prevent XSS
+  const safePath = req.originalUrl
+      .replace(/[<>"'&]/g, '')
+      .substring(0, 200);
   res.status(404).json({
     status: httpStatusText.FAIL,
-    message: `Can't find ${req.originalUrl} on this server`
+    message: `Can't find ${safePath} on this server`
   });
 } ;
 

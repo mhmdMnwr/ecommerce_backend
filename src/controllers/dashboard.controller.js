@@ -5,6 +5,7 @@ const httpStatus = require('../constants/httpStatusText');
 const { OrderStatus } = require('../constants/orderStatus');
 const { Roles } = require('../constants/roles');
 const ApiResponse = require('../utils/apiResponse');
+const { safePaginationLimit } = require('../utils/validators');
 
 // @desc    Get dashboard summary tiles with 30-day growth percentages
 const getTotalsWithGrowth = asyncWrapper(async (req, res) => {
@@ -198,7 +199,7 @@ const getTopProductsAnalytics = asyncWrapper(async (req, res) => {
 // @desc    Get top spending or most active clients
 const getTopClients = asyncWrapper(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = safePaginationLimit(req.query.limit);
     const skip = (page - 1) * limit;
     const sortBy = req.query.sortBy === 'revenue' ? 'totalSpent' : 'totalOrders';
 
@@ -226,8 +227,9 @@ const getTopClients = asyncWrapper(async (req, res) => {
 
 // @desc    Get detailed revenue report grouped by day/month/year
 const getRevenueReport = asyncWrapper(async (req, res) => {
-    const { interval, page = 1, limit = 10 } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const { interval, page = 1 } = req.query;
+    const limit = safePaginationLimit(req.query.limit);
+    const skip = (parseInt(page) - 1) * limit;
     let groupFormat;
 
     switch (interval) {
@@ -249,7 +251,7 @@ const getRevenueReport = asyncWrapper(async (req, res) => {
         {
             $facet: {
                 metadata: [{ $count: "total" }],
-                data: [{ $skip: skip }, { $limit: parseInt(limit) }]
+                data: [{ $skip: skip }, { $limit: limit }]
             }
         }
     ]);
@@ -260,7 +262,7 @@ const getRevenueReport = asyncWrapper(async (req, res) => {
     res.status(200).json(
         new ApiResponse(200, "Revenue report generated", resultData, {
             currentPage: parseInt(page),
-            limit: parseInt(limit),
+            limit: limit,
             totalRecords,
             totalPages: Math.ceil(totalRecords / limit)
         })

@@ -7,6 +7,7 @@ const asyncWrapper = require('../middleware/asyncWrapper');
 const ApiResponse = require('../utils/apiResponse');
 const { validateAndCalculateOrder } = require('../utils/orderHelpers');
 const { escapeRegex } = require('../utils/sanitize');
+const { safePaginationLimit } = require('../utils/validators');
 
 // @desc    Create new order with minimum amount validation
 const createOrder = asyncWrapper(async (req, res, next) => {
@@ -45,9 +46,9 @@ const createOrder = asyncWrapper(async (req, res, next) => {
 
 // @desc    Get all orders with advanced filtering (Admin)
 const getAllOrders = asyncWrapper(async (req, res) => {
-    const { limit = 10, page = 1, name, status, startDate, endDate } = req.query;
-    
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const { page = 1, name, status, startDate, endDate } = req.query;
+    const limit = safePaginationLimit(req.query.limit);
+    const skip = (parseInt(page) - 1) * limit;
     let filter = {};
 
     // 1. Filter by Customer Name (Sub-query)
@@ -73,7 +74,7 @@ const getAllOrders = asyncWrapper(async (req, res) => {
             .populate('customerId', 'username') 
             .populate('items.productId', 'title image')
             .sort({ createdAt: -1 }) 
-            .limit(parseInt(limit))
+            .limit(limit)
             .skip(skip),
         Order.countDocuments(filter)
     ]);
@@ -93,7 +94,7 @@ const getAllOrders = asyncWrapper(async (req, res) => {
 
     const pagination = {
         page: parseInt(page),
-        limit: parseInt(limit),
+        limit: limit,
         totalPages: Math.ceil(total / limit),
         totalItems: total
     };
@@ -106,14 +107,15 @@ const getAllOrders = asyncWrapper(async (req, res) => {
 // @desc    Get logged-in user's order history
 const getMyOrders = asyncWrapper(async (req, res) => {
     const userId = req.currentUser.id;
-    const { limit = 10, page = 1 } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const { page = 1 } = req.query;
+    const limit = safePaginationLimit(req.query.limit);
+    const skip = (parseInt(page) - 1) * limit;
 
     const [orders, total] = await Promise.all([
         Order.find({ customerId: userId })
             .populate('items.productId', 'title image')
             .sort({ createdAt: -1 })
-            .limit(parseInt(limit))
+            .limit(limit)
             .skip(skip),
         Order.countDocuments({ customerId: userId })
     ]);
@@ -133,7 +135,7 @@ const getMyOrders = asyncWrapper(async (req, res) => {
 
     const pagination = {
         page: parseInt(page),
-        limit: parseInt(limit),
+        limit: limit,
         totalPages: Math.ceil(total / limit),
         totalItems: total
     };

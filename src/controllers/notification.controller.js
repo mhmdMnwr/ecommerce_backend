@@ -1,17 +1,19 @@
 const Notification = require('../models/notification.model');
 const asyncWrapper = require('../middleware/asyncWrapper');
 const ApiResponse = require('../utils/apiResponse');
+const { safePaginationLimit } = require('../utils/validators');
 
 // @desc    Get current user's notifications (paginated)
 const getMyNotifications = asyncWrapper(async (req, res) => {
     const userId = req.currentUser.id;
-    const { limit = 20, page = 1 } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const { page = 1 } = req.query;
+    const limit = safePaginationLimit(req.query.limit, 20);
+    const skip = (parseInt(page) - 1) * limit;
 
     const [notifications, total] = await Promise.all([
         Notification.find({ userId })
             .sort({ createdAt: -1 })
-            .limit(parseInt(limit))
+            .limit(limit)
             .skip(skip)
             .select('-__v'),
         Notification.countDocuments({ userId })
@@ -19,8 +21,8 @@ const getMyNotifications = asyncWrapper(async (req, res) => {
 
     const pagination = {
         page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(total / parseInt(limit)),
+        limit: limit,
+        totalPages: Math.ceil(total / limit),
         totalItems: total
     };
 

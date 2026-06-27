@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const app = express();
 const mongoose = require('mongoose');
@@ -16,7 +17,7 @@ const orderRoutes = require('./routes/orders.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const notificationRoutes = require('./routes/notifications.routes');
-const {globalErrorHandler , undefinedRouteHandler} = require('./middleware/globalMiddleware');
+const { globalErrorHandler, undefinedRouteHandler } = require('./middleware/globalMiddleware');
 const connectDB = require('./config/db');
 const priceFormatterMiddleware = require('./utils/priceFormatter');
 
@@ -54,7 +55,26 @@ const sanitizeMiddleware = (req, res, next) => {
     next();
 };
 
-app.use(cors());
+// ── Security Headers ────────────────────────────────
+app.use(helmet());
+
+// ── CORS ────────────────────────────────────────────
+const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',')
+    : ['http://localhost:3000', 'http://localhost:5855'];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, Postman)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true
+}));
+
 app.use(express.json({ limit: '10kb' }));
 app.use(limiter);
 app.use(sanitizeMiddleware);
@@ -66,8 +86,8 @@ app.use('/brands', brandRoutes);
 app.use('/categories', categoryRoutes);
 app.use('/feedbacks', feedbackRoutes);
 app.use('/orders', orderRoutes);
-app.use('/settings' , settingsRoutes);
-app.use('/dashboard' , dashboardRoutes);
+app.use('/settings', settingsRoutes);
+app.use('/dashboard', dashboardRoutes);
 app.use('/notifications', notificationRoutes);
 
 
@@ -78,12 +98,12 @@ app.use(undefinedRouteHandler);
 // Global error handler
 app.use(globalErrorHandler);
 
- connectDB().then(() => {
+connectDB().then(() => {
     try {
-        app.listen(port , ()=>{
+        app.listen(port, () => {
             console.log(`Server is running on port ${port}`);
-        }) 
+        })
     } catch (err) {
         console.log("Cannot start the server", err);
     }
- })
+})

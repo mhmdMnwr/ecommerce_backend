@@ -6,18 +6,21 @@ const asyncWrapper = require('../middleware/asyncWrapper');
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateJWT');
 const jwt = require('jsonwebtoken');
 const { Roles } = require('../constants/roles.js');
+const { UserStatus } = require('../constants/userStatus.js');
 const ApiResponse = require('../utils/apiResponse');
 const { escapeRegex } = require('../utils/sanitize');
+const { validateUsername, validatePassword, validatePhone, validateAddress, validateLatitude, validateLongitude, safePaginationLimit } = require('../utils/validators');
 
 // @desc    Get all users filtered by role/name (Admin/SuperAdmin)
 const getAllUsers = asyncWrapper(async (req, res, next) => {
-    const { limit = 10, page = 1, name, status, role } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const { page = 1, name, status, role } = req.query;
+    const limit = safePaginationLimit(req.query.limit);
+    const skip = (parseInt(page) - 1) * limit;
 
     if (!role || ![Roles.CUSTOMER, Roles.MANAGER, Roles.ADMIN, Roles.SUPER_ADMIN].includes(role)) {
         return next(AppError.create('Valid role query parameter is required', 400, httpStatus.FAIL));
     }
-    
+
     const filter = { role: role };
     if (name) filter.username = { $regex: escapeRegex(name), $options: 'i' };
     if (status) filter.status = status;
@@ -25,14 +28,14 @@ const getAllUsers = asyncWrapper(async (req, res, next) => {
     const users = await User.find(filter)
         .select('-password -__v')
         .sort({ createdAt: -1 })
-        .limit(parseInt(limit))
+        .limit(limit)
         .skip(skip);
 
     const totalUsers = await User.countDocuments(filter);
 
     const pagination = {
         page: parseInt(page),
-        limit: parseInt(limit),
+        limit: limit,
         totalPages: Math.ceil(totalUsers / limit),
         totalItems: totalUsers
     };
@@ -60,15 +63,30 @@ const login = asyncWrapper(async (req, res, next) => {
         return next(AppError.create('Invalid credentials', 401, httpStatus.FAIL));
     }
 
+    // Inactive customers get tokens but a special status flag
+    // so the app can cache the session and show the pending-approval screen.
     if (user.status !== 'active') {
-        return next(AppError.create('Your account is inactive. Please contact support.', 403, httpStatus.FAIL));
+        const accessToken = generateAccessToken({ id: user._id, role: user.role, tokenVersion: user.tokenVersion });
+        const refreshToken = generateRefreshToken({ id: user._id, role: user.role, tokenVersion: user.tokenVersion });
+
+        return res.status(200).json(
+            new ApiResponse(200, "Account is pending approval", {
+                accessToken,
+                refreshToken,
+                status: user.status
+            })
+        );
     }
 
-    const accessToken = generateAccessToken({ id: user._id, role: user.role });
-    const refreshToken = generateRefreshToken({ id: user._id, role: user.role });
+    const accessToken = generateAccessToken({ id: user._id, role: user.role, tokenVersion: user.tokenVersion });
+    const refreshToken = generateRefreshToken({ id: user._id, role: user.role, tokenVersion: user.tokenVersion });
 
     res.status(200).json(
-        new ApiResponse(200, "Login successful", { accessToken, refreshToken })
+        new ApiResponse(200, "Login successful", {
+            accessToken,
+            refreshToken,
+            status: user.status
+        })
     );
 });
 
@@ -82,12 +100,21 @@ const refreshToken = asyncWrapper(async (req, res, next) => {
         const user = await User.findById(decoded.id);
 
         if (!user) return next(AppError.create('User not found', 404, httpStatus.FAIL));
-        if (user.status !== 'active') return next(AppError.create('User account is inactive', 403, httpStatus.FAIL));
 
-        const accessToken = generateAccessToken({ id: user._id, role: user.role });
-        
+        if ((decoded.tokenVersion || 0) !== user.tokenVersion) {
+            return next(AppError.create('Invalid refresh token', 401, httpStatus.FAIL));
+        }
+
+        const accessToken = generateAccessToken({ id: user._id, role: user.role, tokenVersion: user.tokenVersion });
+
+        if (user.status !== 'active') {
+            return res.status(200).json(
+                new ApiResponse(200, "Token refreshed", { accessToken, status: user.status })
+            );
+        }
+
         res.status(200).json(
-            new ApiResponse(200, "Token refreshed", { accessToken })
+            new ApiResponse(200, "Token refreshed", { accessToken, status: user.status })
         );
     } catch (err) {
         return next(AppError.create('Invalid refresh token', 401, httpStatus.FAIL));
@@ -106,25 +133,45 @@ const getMe = asyncWrapper(async (req, res, next) => {
 
 // @desc    Public Registration
 const registerCustomer = asyncWrapper(async (req, res, next) => {
-    const { username, password, address, phone } = req.body;
+    const { username, password, address, phone, latitude, longitude } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // ── Input Validation (V2 + V7) ──────────────────
+    const sanitizedUsername = validateUsername(username);
+    validatePassword(password);
+    validatePhone(phone);
+    validateAddress(address);
+    validateLatitude(latitude);
+    validateLongitude(longitude);
+
+    const hashedPassword = await bcrypt.hash(password, 12);
     const newUser = new User({
-        username,
+        username: sanitizedUsername,
         password: hashedPassword,
         address,
         phone,
-        role: Roles.CUSTOMER
+        latitude: latitude || null,
+        longitude: longitude || null,
+        role: Roles.CUSTOMER,
+        status: UserStatus.INACTIVE   // Customers start inactive until admin approves
     });
 
     await newUser.save();
-    
-    // Remove password from object before sending back
+
+    // Generate tokens so the app can cache the session
+    const accessToken = generateAccessToken({ id: newUser._id, role: newUser.role, tokenVersion: newUser.tokenVersion });
+    const refreshToken = generateRefreshToken({ id: newUser._id, role: newUser.role, tokenVersion: newUser.tokenVersion });
+
+    // Remove password from response
     const userResponse = newUser.toObject();
     delete userResponse.password;
 
     res.status(201).json(
-        new ApiResponse(201, "Registration successful", userResponse)
+        new ApiResponse(201, "Registration successful", {
+            accessToken,
+            refreshToken,
+            user: userResponse,
+            status: newUser.status
+        })
     );
 });
 
@@ -132,17 +179,24 @@ const registerCustomer = asyncWrapper(async (req, res, next) => {
 const createManagerByAdmin = asyncWrapper(async (req, res, next) => {
     const { username, password, address, phone } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // ── Input Validation ────────────────────────────
+    const sanitizedUsername = validateUsername(username);
+    validatePassword(password);
+    validatePhone(phone);
+    validateAddress(address);
+
+    const hashedPassword = await bcrypt.hash(password, 12);
     const newManager = new User({
-        username,
+        username: sanitizedUsername,
         password: hashedPassword,
         role: Roles.MANAGER,
+        status: UserStatus.ACTIVE,
         address,
         phone
     });
 
     await newManager.save();
-    
+
     const managerResponse = newManager.toObject();
     delete managerResponse.password;
 
@@ -154,13 +208,26 @@ const createManagerByAdmin = asyncWrapper(async (req, res, next) => {
 // @desc    Customer: Update own profile
 const updateMe = asyncWrapper(async (req, res, next) => {
     const userId = req.currentUser.id;
-    
-    // Prevent status update
-    const { status, role, password, ...allowedUpdates } = req.body;
-    
+
+    // V11: Whitelist only safe fields for self-update
+    const ALLOWED_FIELDS = ['username', 'address', 'phone', 'latitude', 'longitude'];
+    const allowedUpdates = {};
+    for (const field of ALLOWED_FIELDS) {
+        if (req.body[field] !== undefined) {
+            allowedUpdates[field] = req.body[field];
+        }
+    }
+
     if (Object.keys(allowedUpdates).length === 0) {
         return next(AppError.create('No valid fields to update', 400, httpStatus.FAIL));
     }
+
+    // Validate provided fields
+    if (allowedUpdates.username) allowedUpdates.username = validateUsername(allowedUpdates.username);
+    if (allowedUpdates.phone) validatePhone(allowedUpdates.phone);
+    if (allowedUpdates.address) validateAddress(allowedUpdates.address);
+    if (allowedUpdates.latitude !== undefined) validateLatitude(allowedUpdates.latitude);
+    if (allowedUpdates.longitude !== undefined) validateLongitude(allowedUpdates.longitude);
 
     const updatedUser = await User.findByIdAndUpdate(
         userId,
@@ -180,16 +247,27 @@ const updateMe = asyncWrapper(async (req, res, next) => {
 // @desc    Admin: Update Manager by ID
 const updateManagerById = asyncWrapper(async (req, res, next) => {
     const { managerId } = req.params;
-    
-    // Prevent status and role update
-    const { status, role, password, ...allowedUpdates } = req.body;
-    
+
+    // Whitelist safe fields for manager updates
+    const ALLOWED_FIELDS = ['username', 'address', 'phone'];
+    const allowedUpdates = {};
+    for (const field of ALLOWED_FIELDS) {
+        if (req.body[field] !== undefined) {
+            allowedUpdates[field] = req.body[field];
+        }
+    }
+
     if (Object.keys(allowedUpdates).length === 0) {
         return next(AppError.create('No valid fields to update', 400, httpStatus.FAIL));
     }
 
+    // Validate provided fields
+    if (allowedUpdates.username) allowedUpdates.username = validateUsername(allowedUpdates.username);
+    if (allowedUpdates.phone) validatePhone(allowedUpdates.phone);
+    if (allowedUpdates.address) validateAddress(allowedUpdates.address);
+
     const manager = await User.findById(managerId);
-    
+
     if (!manager) {
         return next(AppError.create('Manager not found', 404, httpStatus.FAIL));
     }
@@ -220,7 +298,13 @@ const toggleUserStatus = asyncWrapper(async (req, res, next) => {
         return next(AppError.create("You cannot deactivate your own account.", 400, httpStatus.FAIL));
     }
 
-    user.status = user.status === 'active' ? 'inactive' : 'active';
+    if (user.status === 'active') {
+        user.status = 'inactive';
+        user.tokenVersion = (user.tokenVersion || 0) + 1; // Invalidate existing tokens
+    } else {
+        user.status = 'active';
+        // Do not increment tokenVersion when activating, so they can enter the app without re-logging in
+    }
     await user.save();
 
     res.status(200).json(

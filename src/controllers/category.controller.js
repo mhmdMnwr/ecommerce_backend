@@ -5,11 +5,12 @@ const AppError = require('../utils/appErrors');
 const asyncWrapper = require('../middleware/asyncWrapper');
 const ApiResponse = require('../utils/apiResponse');
 const { escapeRegex } = require('../utils/sanitize');
+const { safePaginationLimit } = require('../utils/validators');
 
 // @desc    Get all categories with search and pagination
 const getAllCategories = asyncWrapper(async (req, res) => {
     const query = req.query || {};
-    const limit = parseInt(query.limit) || 10;
+    const limit = safePaginationLimit(query.limit);
     const page = parseInt(query.page) || 1;
     const skip = (page - 1) * limit;
 
@@ -66,10 +67,19 @@ const createCategory = asyncWrapper(async (req, res, next) => {
 
 // @desc    Update category
 const updateCategory = asyncWrapper(async (req, res, next) => {
-    // Note: Using findByIdAndUpdate is cleaner than updateOne + findById
+    // V4: Whitelist allowed fields
+    const { title, image } = req.body;
+    const updates = {};
+    if (title !== undefined) updates.title = title;
+    if (image !== undefined) updates.image = image;
+
+    if (Object.keys(updates).length === 0) {
+        return next(AppError.create('No valid fields to update', 400, httpStatus.FAIL));
+    }
+
     const category = await Category.findByIdAndUpdate(
         req.params.id,
-        { $set: req.body },
+        { $set: updates },
         { new: true, runValidators: true }
     );
 

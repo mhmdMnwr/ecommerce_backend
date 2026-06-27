@@ -3,11 +3,12 @@ const httpStatus = require('../constants/httpStatusText');
 const AppError = require('../utils/appErrors');
 const asyncWrapper = require('../middleware/asyncWrapper');
 const ApiResponse = require('../utils/apiResponse');
+const { safePaginationLimit } = require('../utils/validators');
 
 // @desc    Get all feedbacks with pagination
 const getAllFeedbacks = asyncWrapper(async (req, res) => {
     const query = req.query || {};
-    const limit = parseInt(query.limit) || 10;
+    const limit = safePaginationLimit(query.limit);
     const page = parseInt(query.page) || 1;
     const skip = (page - 1) * limit;
 
