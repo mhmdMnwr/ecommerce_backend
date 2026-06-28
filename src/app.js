@@ -26,6 +26,7 @@ const connectDB = require('./config/db');
 const priceFormatterMiddleware = require('./utils/priceFormatter');
 
 // ── Security Middleware ─────────────────────────────
+app.set('trust proxy', 1); // Trust first proxy (Render load balancer)
 // Rate limiting: max 100 requests per 15 minutes per IP
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
