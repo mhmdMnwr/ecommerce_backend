@@ -21,7 +21,7 @@ const registerLimiter = rateLimit({
 });
 
 router.route('/')
-    .get(verifyToken , allowedTo(Roles.ADMIN , Roles.MANAGER), userController.getAllUsers);
+    .get(verifyToken, allowedTo(Roles.ADMIN, Roles.MANAGER), userController.getAllUsers);
 
 router.route('/login')
     .post(loginLimiter, userController.login);
@@ -30,13 +30,13 @@ router.route('/refresh-token')
     .post(userController.refreshToken);
 
 router.route('/me')
-    .get(verifyToken,allowedTo(Roles.CUSTOMER, Roles.MANAGER, Roles.ADMIN), userController.getMe)
-    .patch(verifyToken, allowedTo(Roles.CUSTOMER), userController.updateMe);   
+    .get(verifyToken, allowedTo(Roles.CUSTOMER, Roles.MANAGER, Roles.ADMIN), userController.getMe)
+    .patch(verifyToken, allowedTo(Roles.CUSTOMER, Roles.ADMIN), userController.updateMe);
 
-    router.route('/registerCustomer')
+router.route('/registerCustomer')
     .post(registerLimiter, userController.registerCustomer);
 
-    router.route('/createManagerByAdmin' )
+router.route('/createManagerByAdmin')
     .post(verifyToken, allowedTo(Roles.ADMIN), userController.createManagerByAdmin);
 
 

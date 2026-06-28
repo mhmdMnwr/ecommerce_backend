@@ -101,7 +101,7 @@ const refreshToken = asyncWrapper(async (req, res, next) => {
 
         if (!user) return next(AppError.create('User not found', 404, httpStatus.FAIL));
 
-        if ((decoded.tokenVersion || 0) !== user.tokenVersion) {
+        if ((decoded.tokenVersion || 0) !== (user.tokenVersion || 0)) {
             return next(AppError.create('Invalid refresh token', 401, httpStatus.FAIL));
         }
 

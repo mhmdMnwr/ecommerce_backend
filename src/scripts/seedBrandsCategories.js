@@ -19,12 +19,12 @@ const seedDB = async () => {
 
         // 2. Create 15 Brands
         const brandNames = ['Candia', 'Apple', 'Samsung', 'Nike', 'Nestle', 'Sony', 'Adidas', 'LG', 'Dell', 'Zara', 'Beko', 'Condor', 'Ifri', 'Hamoud', 'Soummam'];
-        const brands = await Brand.insertMany(brandNames.map(name => ({ title: name, image: 'brand_logo.png' })));
+        const brands = await Brand.insertMany(brandNames.map(name => ({ title: name, image: `https://loremflickr.com/400/400/grocery,food,${encodeURIComponent(name.split(' ')[0])}` })));
         console.log("Created 15 Brands ✅");
 
         // 3. Create 15 Categories
         const catNames = ['Dairy', 'Electronics', 'Clothing', 'Beverages', 'Home Appliances', 'Computers', 'Footwear', 'Snacks', 'Personal Care', 'Furniture', 'Toys', 'Books', 'Tools', 'Automotive', 'Sports'];
-        const categories = await Category.insertMany(catNames.map(name => ({ title: name  })));
+        const categories = await Category.insertMany(catNames.map(name => ({ translation: { en: name, fr: name, ar: name }, image: `https://loremflickr.com/400/400/grocery,food,${encodeURIComponent(name.split(' ')[0])}` })));
         console.log("Created 15 Categories ✅");
 
         const products = [];
@@ -34,6 +34,7 @@ const seedDB = async () => {
             products.push({
                 title: `Premium Product ${i}`,
                 price: Math.floor(Math.random() * 5000) + 100,
+                image: `https://loremflickr.com/400/400/grocery,food,product`,
                 units: 2,
                 brand: brands[i % brands.length]._id,
                 category: categories[i % categories.length]._id,
@@ -46,6 +47,7 @@ const seedDB = async () => {
             products.push({
                 title: `Generic Item ${i}`,
                 price: Math.floor(Math.random() * 1000) + 50,
+                image: `https://loremflickr.com/400/400/grocery,food,item`,
                 units: Math.floor(Math.random() * 200),
                 brand: null, // As per your schema default
                 category: null,

@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
-const { RoleValues , Roles } = require('../constants/roles.js');
-const { UserStatus , StatusValues } = require('../constants/userStatus.js');
+const { RoleValues, Roles } = require('../constants/roles.js');
+const { UserStatus, StatusValues } = require('../constants/userStatus.js');
 const AppError = require('../utils/appErrors.js');
 
 const userSchema = new mongoose.Schema({
@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: StatusValues,
-        default: UserStatus.ACTIVE
+        default: UserStatus.INACTIVE
     },
     role: {
         type: String,
@@ -37,9 +37,12 @@ const userSchema = new mongoose.Schema({
     phone: { type: String, default: '' },
     latitude: { type: Number, default: null },
     longitude: { type: Number, default: null },
-    tokenVersion: { type: Number, default: 0 },
+    tokenVersion: {
+        type: Number,
+        default: 0
+    },
 
-}, { 
+}, {
     timestamps: true,
     toJSON: {
         transform(doc, ret) {
@@ -54,18 +57,18 @@ const userSchema = new mongoose.Schema({
 userSchema.pre('save', async function () {
     // 1. Singleton Admin Check
     if (this.role === Roles.ADMIN && (this.isNew || this.isModified('role'))) {
-        const AdminModel = this.constructor; 
+        const AdminModel = this.constructor;
         const adminCount = await AdminModel.countDocuments({ role: Roles.ADMIN });
 
         if (adminCount > 0) {
-            
+
             throw AppError.create('Constraint Violation: Only one Admin account is allowed.', 400, httpStatus.FAIL);
         }
     }
 
-    
-    
-    
+
+
+
 });
 
 module.exports = mongoose.model('User', userSchema);

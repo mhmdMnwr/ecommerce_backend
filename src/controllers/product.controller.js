@@ -73,7 +73,7 @@ const getAllProducts = asyncWrapper(async (req, res) => {
 
     let productsQuery = Product.find(filter, { "__v": false })
         .populate('brand', 'title image')
-        .populate('category', 'title image')
+        .populate('category', 'translation image')
         .limit(limit)
         .skip(skip);
 
@@ -99,7 +99,7 @@ const getAllProducts = asyncWrapper(async (req, res) => {
 const getProduct = asyncWrapper(async (req, res, next) => {
     const product = await Product.findById(req.params.id)
         .populate('brand', 'title')
-        .populate('category', 'title');
+        .populate('category', 'translation image');
 
     if (!product) {
         return next(AppError.create('Product not found', 404, httpStatus.FAIL));
@@ -198,7 +198,7 @@ const getNewProducts = asyncWrapper(async (req, res, next) => {
     const filter = req.currentUser.role === 'customer' ? { state: 'available' } : {};
     const products = await Product.find(filter)
         .populate('brand', 'title image')
-        .populate('category', 'title image')
+        .populate('category', 'translation image')
         .sort({ createdAt: -1 })
         .limit(limit);
     res.status(200).json(
@@ -212,7 +212,7 @@ const getTopSellingProducts = asyncWrapper(async (req, res, next) => {
     const filter = req.currentUser.role === 'customer' ? { state: 'available' } : {};
     const products = await Product.find(filter)
         .populate('brand', 'title image')
-        .populate('category', 'title image')
+        .populate('category', 'translation image')
         .sort({ totalSold: -1 })
         .limit(limit);
     res.status(200).json(

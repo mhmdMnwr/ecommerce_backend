@@ -20,7 +20,7 @@ const verifyToken = async (req, res, next) => {
 
         // If the token doesn't have a tokenVersion (e.g. old tokens), we treat it as 0.
         // If the user's tokenVersion is incremented, old tokens will fail.
-        if ((currentUser.tokenVersion || 0) !== user.tokenVersion) {
+        if ((currentUser.tokenVersion || 0) !== (user.tokenVersion || 0)) {
             return next(AppError.create('Token expired or invalid', 401, httpStatusText.FAIL));
         }
 

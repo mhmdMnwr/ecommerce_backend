@@ -403,7 +403,7 @@ const seedBrands = async () => {
     
     const brands = uniqueBrands.map(name => ({
         title: name,
-        image: 'qcqwzzy4zagqib6izzyg.jpg',
+        image: `https://loremflickr.com/400/400/grocery,food,${encodeURIComponent(name.split(' ')[0])}`,
         createdAt: randomDate(start, end)
     }));
     
@@ -418,8 +418,8 @@ const seedCategories = async () => {
     
     const { start, end } = getDateRange();
     const categories = categoryNames.map(name => ({
-        title: name,
-        image: 'qcqwzzy4zagqib6izzyg.jpg',
+        translation: { en: name, fr: name, ar: name },
+        image: `https://loremflickr.com/400/400/grocery,food,${encodeURIComponent(name.split(' ')[0])}`,
         createdAt: randomDate(start, end)
     }));
     
@@ -441,7 +441,7 @@ const seedProducts = async (brands, categories) => {
     brands.forEach(b => { brandMap[b.title] = b._id; });
     
     const categoryMap = {};
-    categories.forEach(c => { categoryMap[c.title] = c._id; });
+    categories.forEach(c => { categoryMap[c.translation.en] = c._id; });
     
     // First, add all predefined Algerian products
     for (const product of algerianProducts) {
@@ -451,7 +451,7 @@ const seedProducts = async (brands, categories) => {
             products.push({
                 title: product.name,
                 price: product.price,
-                image: 'qcqwzzy4zagqib6izzyg.jpg',
+                image: `https://loremflickr.com/400/400/grocery,food,${encodeURIComponent(product.name.split(' ')[0])}`,
                 brand: brandMap[product.brand] || null,
                 category: categoryMap[product.category] || null,
                 units: product.units,
@@ -479,7 +479,7 @@ const seedProducts = async (brands, categories) => {
             products.push({
                 title,
                 price: Math.round(baseProduct.price * priceMultiplier),
-                image: 'qcqwzzy4zagqib6izzyg.jpg',
+                image: `https://loremflickr.com/400/400/grocery,food,${encodeURIComponent(baseProduct.name.split(' ')[0])}`,
                 brand: brandMap[baseProduct.brand] || null,
                 category: categoryMap[baseProduct.category] || null,
                 units: baseProduct.units,

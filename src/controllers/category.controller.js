@@ -6,6 +6,7 @@ const asyncWrapper = require('../middleware/asyncWrapper');
 const ApiResponse = require('../utils/apiResponse');
 const { escapeRegex } = require('../utils/sanitize');
 const { safePaginationLimit } = require('../utils/validators');
+const axios = require('axios');
 
 // @desc    Get all categories with search and pagination
 const getAllCategories = asyncWrapper(async (req, res) => {
@@ -16,7 +17,12 @@ const getAllCategories = asyncWrapper(async (req, res) => {
 
     const filter = {};
     if (query.title) {
-        filter.title = { $regex: escapeRegex(query.title), $options: 'i' }; 
+        const regex = { $regex: escapeRegex(query.title), $options: 'i' };
+        filter.$or = [
+            { 'translation.en': regex },
+            { 'translation.fr': regex },
+            { 'translation.ar': regex }
+        ];
     }
 
     const totalCategories = await Category.countDocuments(filter);
@@ -51,13 +57,13 @@ const getCategory = asyncWrapper(async (req, res, next) => {
 
 // @desc    Create new category
 const createCategory = asyncWrapper(async (req, res, next) => {
-    const { title, image } = req.body;
+    const { translation, image } = req.body;
     
-    if (!title) {
-        return next(AppError.create('Title is required', 400, httpStatus.FAIL));
+    if (!translation || (!translation.en && !translation.fr && !translation.ar)) {
+        return next(AppError.create('At least one translation (en, fr, ar) is required', 400, httpStatus.FAIL));
     }
 
-    const newCategory = new Category({ title, image });
+    const newCategory = new Category({ translation, image });
     await newCategory.save();
 
     res.status(201).json(
@@ -68,9 +74,9 @@ const createCategory = asyncWrapper(async (req, res, next) => {
 // @desc    Update category
 const updateCategory = asyncWrapper(async (req, res, next) => {
     // V4: Whitelist allowed fields
-    const { title, image } = req.body;
+    const { translation, image } = req.body;
     const updates = {};
-    if (title !== undefined) updates.title = title;
+    if (translation !== undefined) updates.translation = translation;
     if (image !== undefined) updates.image = image;
 
     if (Object.keys(updates).length === 0) {
@@ -111,10 +117,71 @@ const deleteCategory = asyncWrapper(async (req, res, next) => {
     );
 });
 
+// @desc    Translate word using DeepL
+const translateWord = asyncWrapper(async (req, res, next) => {
+    const { word, currentLang, targetLang } = req.body;
+
+    if (!word || typeof word !== 'string') {
+        return next(AppError.create('A valid word is required', 400, httpStatus.FAIL));
+    }
+    
+    if (!targetLang || typeof targetLang !== 'string') {
+        return next(AppError.create('Target language is required', 400, httpStatus.FAIL));
+    }
+
+    try {
+        const apiKey = process.env.DEEPL_API_KEY;
+        if (!apiKey) {
+            console.warn("DEEPL_API_KEY is not set. Falling back to English/original word.");
+            return res.status(200).json(
+                new ApiResponse(200, "Translation fallback (No API Key)", { translation: word })
+            );
+        }
+
+        // DeepL expects EN-US or EN-GB for English
+        let mappedTargetLang = targetLang.toUpperCase();
+        if (mappedTargetLang === 'EN') mappedTargetLang = 'EN-US';
+
+        const isFreeAccount = apiKey.endsWith(':fx');
+        const apiUrl = isFreeAccount 
+            ? 'https://api-free.deepl.com/v2/translate' 
+            : 'https://api.deepl.com/v2/translate';
+
+        const data = {
+            text: [word],
+            target_lang: mappedTargetLang
+        };
+
+        if (currentLang) {
+            data.source_lang = currentLang.toUpperCase();
+        }
+
+        const response = await axios.post(apiUrl, data, {
+            headers: {
+                'Authorization': `DeepL-Auth-Key ${apiKey}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const translatedText = response.data.translations[0].text;
+        
+        res.status(200).json(
+            new ApiResponse(200, "Translation successful", { translation: translatedText })
+        );
+    } catch (error) {
+        console.error('DeepL translation error:', error.response?.data || error.message);
+        // Fallback to English (or original word) if translation fails
+        res.status(200).json(
+            new ApiResponse(200, "Translation fallback", { translation: word })
+        );
+    }
+});
+
 module.exports = {
     getAllCategories,
     getCategory,
     createCategory,
     updateCategory,
-    deleteCategory
+    deleteCategory,
+    translateWord
 };

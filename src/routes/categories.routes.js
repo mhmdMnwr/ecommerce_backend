@@ -13,6 +13,9 @@ router.route('/')
     .get(categoryController.getAllCategories)
     .post(allowedTo(Roles.ADMIN, Roles.MANAGER), categoryController.createCategory);
 
+router.route('/translate')
+    .post(allowedTo(Roles.ADMIN, Roles.MANAGER), categoryController.translateWord);
+
 router.route('/:id')
     .get(categoryController.getCategory)
     .patch(allowedTo(Roles.ADMIN, Roles.MANAGER), categoryController.updateCategory)
