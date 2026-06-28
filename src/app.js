@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const cron = require('node-cron');
+const axios = require('axios');
 const app = express();
 const mongoose = require('mongoose');
 const url = process.env.MONGO_URL;
@@ -83,6 +85,20 @@ app.use('/settings', settingsRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/notifications', notificationRoutes);
 
+
+// ── Keep-Alive Cron Job ─────────────────────────────
+// Simple ping route to keep the server awake
+app.get('/ping', (req, res) => {
+    res.status(200).json({ message: 'pong' });
+});
+
+// Cron job to ping the server every 14 minutes
+cron.schedule('*/14 * * * *', () => {
+    const serverUrl = process.env.SERVER_URL || `http://localhost:${port}`;
+    axios.get(`${serverUrl}/ping`)
+        .then(() => console.log('Keep-alive ping successful'))
+        .catch((err) => console.error('Keep-alive ping failed:', err.message));
+});
 
 // Catch-all for undefined routes
 app.use(undefinedRouteHandler);
