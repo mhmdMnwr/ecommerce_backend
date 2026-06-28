@@ -1,7 +1,12 @@
 node_modules/
 .env
+.env.development
+.env.production
+
 npm-debug.log
 .DS_Store
 coverage/
 .vscode/
 .idea/
+.env.development
+.env.production
