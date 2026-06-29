@@ -1,0 +1,11 @@
+[dotenv@17.2.3] injecting env (11) from .env.development -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+✅ Database connected successfully
+Server is running on port 4000
+(node:207113) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Keep-alive ping successful
+Keep-alive ping successful
+Keep-alive ping successful
+Keep-alive ping successful
+(node:207113) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(node:207113) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.

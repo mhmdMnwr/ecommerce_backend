@@ -87,7 +87,7 @@ app.use('/orders', orderRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/notifications', notificationRoutes);
-
+app.use('/api', require('./routes/appVersion.routes'));
 
 // ── Keep-Alive Cron Job ─────────────────────────────
 // Simple ping route to keep the server awake
