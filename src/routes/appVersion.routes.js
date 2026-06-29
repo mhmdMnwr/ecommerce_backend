@@ -10,7 +10,7 @@ const ciLimiter = rateLimit({ windowMs: 60 * 1000, max: 5 });
 function isAllowedDownloadUrl(url) {
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'https:' && parsed.hostname === 'res.cloudinary.com';
+    return parsed.protocol === 'https:' && parsed.hostname === 'github.com';
   } catch {
     return false;
   }
@@ -52,7 +52,7 @@ router.post('/app-version', ciLimiter, async (req, res) => {
     return res.status(400).json({ message: 'versionName must look like 1.2.3' });
   }
   if (!isAllowedDownloadUrl(downloadUrl)) {
-    return res.status(400).json({ message: 'downloadUrl must be an https Cloudinary URL' });
+    return res.status(400).json({ message: 'downloadUrl must be an https GitHub URL' });
   }
   
   const notes = typeof releaseNotes === 'string' ? releaseNotes.slice(0, 500) : '';
